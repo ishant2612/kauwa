@@ -1,0 +1,7 @@
+torch
+numpy
+transformers
+scikit-learn
+faiss-cpu
+neo4j
+spacy
