@@ -12,7 +12,8 @@ import concurrent.futures
 # torch.set_num_threads(1)
 # === Configuration ===
 API_KEY = "AIzaSyAKbqZeRUVx_MLYx8fHODXvtETKUBJbdFY"  # Replace with your Google API Key
-CSE_ID = "71022aef7763d4a02"            # Replace with your Custom Search Engine ID
+# CSE_ID = "71022aef7763d4a02"            # Replace with your Custom Search Engine ID
+CSE_ID = "2773c54566429473a"            # Ishant's Custom Search Engine
 NUM_RESULTS = 10                  # Number of search results to fetch
 
 
@@ -101,7 +102,7 @@ class VerificationSearchSystem:
         confidence = scores[0]['semantic_similarity'] if scores else 0
         
         return {
-            'verdict': 'TRUE' if confidence > 0.7 else 'PARTIALLY_TRUE' if confidence > 0.4 else 'FALSE',
+            'verdict': 'TRUE' if confidence > 0.2 else 'PARTIALLY_TRUE' if confidence > 0.1 else 'FALSE',
             'confidence': confidence,
             'top_sources': scores[:3]
         }
@@ -150,19 +151,21 @@ def main():
         api_key=API_KEY,
         cse_id=CSE_ID
     )
-    
-    query = "Pat Cummins marries Virat Kohli"
-    results = system.process_query(query)
-    
-    print("\nSearch Results with Verification:")
-    print(f"Verdict: {results['verification']['verdict']}")
-    print(f"Confidence: {results['verification']['confidence']:.2f}")
-    
-    for idx, source in enumerate(results['verification']['top_sources'], 1):
-        print(f"\nSource {idx}:")
-        print(f"Title: {source['source']['title']}")
-        print(f"Score: {source['semantic_similarity']:.2f}")
-        print(f"URL: {source['source']['url']}")
+    while True:
+        query = input("Enter your query (or 'exit' to quit): ")
+        if query.lower() == "exit":
+            break
+        results = system.process_query(query)
+        
+        print("\nSearch Results with Verification:")
+        print(f"Verdict: {results['verification']['verdict']}")
+        print(f"Confidence: {results['verification']['confidence']:.2f}")
+        
+        for idx, source in enumerate(results['verification']['top_sources'], 1):
+            print(f"\nSource {idx}:")
+            print(f"Title: {source['source']['title']}")
+            print(f"Score: {source['semantic_similarity']:.2f}")
+            print(f"URL: {source['source']['url']}")
 
 if __name__ == "__main__":
     main()
