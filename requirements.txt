@@ -5,3 +5,6 @@ scikit-learn
 faiss-cpu
 neo4j
 spacy
+google-api-python-client
+trafilatura
+bs4
