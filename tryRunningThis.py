@@ -1,4 +1,3 @@
-
 from googleapiclient.discovery import build
 import requests
 from bs4 import BeautifulSoup
@@ -9,6 +8,7 @@ from transformers import AutoTokenizer, AutoModel
 import faiss
 from concurrent.futures import ThreadPoolExecutor
 import concurrent.futures
+from transformers import pipeline
 # torch.set_num_threads(1)
 # === Configuration ===
 API_KEY = "AIzaSyAKbqZeRUVx_MLYx8fHODXvtETKUBJbdFY"  # Replace with your Google API Key
@@ -29,6 +29,9 @@ class VerificationSearchSystem:
         # Embedding model setup
         self.tokenizer = AutoTokenizer.from_pretrained(embedding_model)
         self.model = AutoModel.from_pretrained(embedding_model)
+        
+        # Synonym generation setup
+        self.synonym_generator = pipeline('fill-mask', model='bert-base-uncased')
     
     def google_search(self, query: str, num_results: int = 5):
         """Perform Google Custom Search."""
@@ -71,6 +74,19 @@ class VerificationSearchSystem:
         input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
         return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(input_mask_expanded.sum(1), min=1e-9)
     
+    def _generate_synonyms(self, text: str) -> str:
+        """Generate synonyms for key terms in the text."""
+        words = text.split()
+        expanded_text = []
+        for word in words:
+            # Generate synonyms for the word
+            masked_text = text.replace(word, '[MASK]')
+            predictions = self.synonym_generator(masked_text)
+            synonyms = [pred['token_str'] for pred in predictions[:3]]  # Take top 3 synonyms
+            expanded_text.append(word)
+            expanded_text.extend(synonyms)
+        return ' '.join(expanded_text)
+    
     def verify_content(self, text: str, sources: list) -> dict:
         """Verify the given text against sources."""
         if not sources:
@@ -80,29 +96,38 @@ class VerificationSearchSystem:
                 'explanation': 'No sources available'
             }
         
+        # Generate synonyms for the text
+        expanded_text = self._generate_synonyms(text)
+        
         # Create embeddings
         source_embeddings = self._efficient_embedding([s['content'] for s in sources])
-        text_embedding = self._efficient_embedding([text])[0]
+        text_embedding = self._efficient_embedding([expanded_text])[0]
         
-        # Calculate similarities
-        faiss_index = faiss.IndexFlatL2(source_embeddings.shape[1])
+        # Normalize embeddings to unit vectors
+        source_embeddings = source_embeddings / np.linalg.norm(source_embeddings, axis=1, keepdims=True)
+        text_embedding = text_embedding / np.linalg.norm(text_embedding)
+        
+        # Calculate similarities using cosine similarity
+        faiss_index = faiss.IndexFlatIP(source_embeddings.shape[1])
         faiss_index.add(source_embeddings)
         distances, indices = faiss_index.search(text_embedding.reshape(1, -1), len(sources))
         
-        # Generate scores and sort results
+        # Convert distances to cosine similarity scores
+        cosine_similarities = distances[0]
+        
+        # Collect scores
         scores = []
-        for idx, distance in zip(indices[0], distances[0]):
-            semantic_score = 1 / (1 + distance)  # Transform distance to similarity
+        for idx, similarity in zip(indices[0], cosine_similarities):
             scores.append({
                 'source': sources[idx],
-                'semantic_similarity': semantic_score
+                'semantic_similarity': similarity
             })
         
         scores.sort(key=lambda x: x['semantic_similarity'], reverse=True)
         confidence = scores[0]['semantic_similarity'] if scores else 0
         
         return {
-            'verdict': 'TRUE' if confidence > 0.2 else 'PARTIALLY_TRUE' if confidence > 0.1 else 'FALSE',
+            'verdict': 'TRUE' if confidence > 0.5 else 'FALSE',
             'confidence': confidence,
             'top_sources': scores[:3]
         }
@@ -145,8 +170,6 @@ class VerificationSearchSystem:
         }
 
 def main():
-    
-    
     system = VerificationSearchSystem(
         api_key=API_KEY,
         cse_id=CSE_ID
