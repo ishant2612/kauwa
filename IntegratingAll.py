@@ -1,100 +1,79 @@
-import uuid
-import requests
 from neo4j import GraphDatabase
-import spacy
-from concurrent.futures import ThreadPoolExecutor
+from verification.search_system import VerificationSearchSystem
+from config import API_KEY, CSE_ID
 import hashlib
+import json
+import numpy as np
 
-# ---- API KEYS AND CONFIG ---- #
-GOOGLE_KG_API_KEY = "AIzaSyC8Ue6Lat1UowH1LJu6Gq8VQxNCbXUqH2I"
-NEWS_API_KEY = "6b16b1fc8cd041fea977198a4ab624a3"
-WIKIDATA_BASE_URL = "https://query.wikidata.org/sparql"
-
-NEO4J_URI = "bolt://localhost:7687"
-NEO4J_USERNAME = "neo4j"
-NEO4J_PASSWORD = "ABCD1234"
-
-# Load NLP Model
-nlp = spacy.load("en_core_web_sm")
-
-# ---- API FETCHING FUNCTIONS ---- #
-
-# Fetch data from Google Knowledge Graph API
-def fetch_google_kg_data(query):
-    url = f"https://kgsearch.googleapis.com/v1/entities:search?query={query}&key={GOOGLE_KG_API_KEY}&limit=5"
-    response = requests.get(url)
-    if response.status_code == 200:
-        return response.json()
-    return None
-
-# Fetch data from NewsAPI
-def fetch_newsapi_data(query):
-    url = f"https://newsapi.org/v2/everything?q={query}&apiKey={NEWS_API_KEY}&pageSize=5"
-    response = requests.get(url)
-    if response.status_code == 200:
-        return response.json()
-    return None
-
-# Fetch data from Wikidata
-def fetch_wikidata(query):
-    sparql_query = f"""
-    SELECT ?item ?itemLabel ?description WHERE {{
-        ?item ?label "{query}"@en.
-        ?item schema:description ?description.
-        FILTER (lang(?description) = "en")
-        SERVICE wikibase:label {{ bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }}
-    }}
-    LIMIT 5
-    """
-    headers = {"Accept": "application/json"}
-    response = requests.get(WIKIDATA_BASE_URL, params={"query": sparql_query, "format": "json"}, headers=headers)
-    if response.status_code == 200:
-        return response.json()
-    return None
-
-# ---- NEO4J FUNCTIONS ---- #
-
-class Neo4jManager:
+class KnowledgeGraphManager:
     def __init__(self, uri, username, password):
         self.driver = GraphDatabase.driver(uri, auth=(username, password))
+        self.verification_system = VerificationSearchSystem(
+            api_key=API_KEY,
+            cse_id=CSE_ID
+        )
+        # Create constraints
+        self._initialize_database()
+
+    def _initialize_database(self):
+        with self.driver.session() as session:
+            # Create constraint for Query nodes
+            session.run("CREATE CONSTRAINT IF NOT EXISTS FOR (q:Query) REQUIRE q.query_id IS UNIQUE")
 
     def close(self):
         self.driver.close()
 
-    def add_query(self, query, is_true):
-        """
-        Add the query to the Knowledge Graph with its truth value.
-        """
+    def _generate_query_id(self, query):
+        return hashlib.md5(query.encode()).hexdigest()
+
+    def _convert_numpy_types(self, obj):
+        if isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        elif isinstance(obj, dict):
+            return {key: self._convert_numpy_types(value) for key, value in obj.items()}
+        elif isinstance(obj, list):
+            return [self._convert_numpy_types(item) for item in obj]
+        return obj
+
+    def add_query_to_graph(self, query, verification_result):
         query_id = self._generate_query_id(query)
+        # Convert numpy types before JSON serialization
+        processed_result = self._convert_numpy_types(verification_result)
+        
         with self.driver.session() as session:
-            session.execute_write(self._create_or_merge_query, query_id, query, is_true)
+            try:
+                session.execute_write(
+                    self._create_query_node, 
+                    query_id, 
+                    query, 
+                    processed_result
+                )
+            except Exception as e:
+                print(f"Error adding to graph: {e}")
+                raise
 
     @staticmethod
-    def _generate_query_id(query):
-        """
-        Generate a unique identifier (hash) for the query based on its text.
-        """
-        return hashlib.sha256(query.encode('utf-8')).hexdigest()
-
-    @staticmethod
-    def _create_or_merge_query(tx, query_id, query, is_true):
-        query_text = """
+    def _create_query_node(tx, query_id, query_text, verification_result):
+        query = """
         MERGE (q:Query {query_id: $query_id})
-        ON CREATE SET q.text = $query, q.is_true = $is_true
+        SET q.text = $query_text,
+            q.is_true = $is_true,
+            q.confidence = $confidence,
+            q.verification_data = $verification_data,
+            q.timestamp = timestamp()
         """
-        tx.run(query_text, query_id=query_id, query=query, is_true=is_true)
-
-    def query_exists(self, query):
-        query_id = self._generate_query_id(query)
-        with self.driver.session() as session:
-            result = session.execute_read(self._query_exists, query_id)
-        return result
-
-    @staticmethod
-    def _query_exists(tx, query_id):
-        query = "MATCH (q:Query {query_id: $query_id}) RETURN q"
-        result = tx.run(query, query_id=query_id)
-        return result.single() is not None
+        tx.run(
+            query,
+            query_id=query_id,
+            query_text=query_text,
+            is_true=verification_result['verification']['verdict'] == 'TRUE',
+            confidence=float(verification_result['verification']['confidence']),
+            verification_data=json.dumps(verification_result)
+        )
 
     def get_query_truth_value(self, query):
         query_id = self._generate_query_id(query)
@@ -109,73 +88,41 @@ class Neo4jManager:
         record = result.single()
         return record["is_true"] if record else None
 
-# Function to verify the truthfulness of a query
-def verify_query(query, data_sources):
-    """
-    Placeholder verification logic. Verifies the query based on data from APIs.
-    Returns True if verified as true, otherwise False.
-    """
-    # Dummy logic: Check if the query matches any description in fetched data
-    for data_source in data_sources:
-        if query.lower() in data_source.lower():
-            return True
-    return False
+    def verify_query(self, query):
+        """Verify query using VerificationSearchSystem and store in knowledge graph"""
+        # First check if query exists in knowledge graph
+        existing_truth = self.get_query_truth_value(query)
+        if existing_truth is not None:
+            return existing_truth
 
-def handle_query(query, neo4j_manager):
-    # Step 1: Check if the query exists in the Knowledge Graph
-    if neo4j_manager.query_exists(query):
-        print(f"Query '{query}' found in Knowledge Graph.")
-        is_true = neo4j_manager.get_query_truth_value(query)
-        print(f"Truth value: {'True' if is_true else 'False'}")
-    else:
-        print(f"Query '{query}' not found in Knowledge Graph. Fetching data from APIs...")
-        # Step 2: Fetch data from APIs in parallel
-        with ThreadPoolExecutor() as executor:
-            results = executor.map(lambda func: func(query), [fetch_google_kg_data, fetch_newsapi_data, fetch_wikidata])
+        # If not in graph, verify using VerificationSearchSystem
+        verification_result = self.verification_system.process_query(query)
+        
+        # Add to knowledge graph
+        if verification_result["verification"]["verdict"] == "TRUE":
+            self.add_query_to_graph(query, verification_result)
+        
+        return verification_result['verification']['verdict'] == 'TRUE'
 
-        data_sources = []
+def main():
+    # Neo4j connection details
+    uri = "bolt://localhost:7687"
+    username = "neo4j"
+    password = "ABCD1234"  
 
-        # Process API responses
-        for result in results:
-            if result:
-                # Process Google KG data
-                if "itemListElement" in result:
-                    for element in result["itemListElement"]:
-                        description = element["result"].get("detailedDescription", {}).get("articleBody", "No description available.")
-                        data_sources.append(description)
-                # Process NewsAPI data
-                elif "articles" in result:
-                    for article in result["articles"]:
-                        description = article.get("description", "No description available.")
-                        data_sources.append(description)
-                # Process Wikidata
-                elif "results" in result:
-                    for item in result["results"]["bindings"]:
-                        description = item.get("description", {}).get("value", "No description available.")
-                        data_sources.append(description)
-
-        # Step 3: Verify the query
-        is_true = verify_query(query, data_sources)
-
-        # Step 4: Output result and update Knowledge Graph
-        if is_true:
-            print(f"Query '{query}' is TRUE. Adding to Knowledge Graph.")
-            neo4j_manager.add_query(query, True)
-        else:
-            print(f"Query '{query}' is FALSE.")
-
-# ---- EXECUTION ---- #
+    kg_manager = KnowledgeGraphManager(uri, username, password)
+    
+    try:
+        while True:
+            query = input("Enter your query (or 'exit' to quit): ")
+            if query.lower() == "exit":
+                break
+            
+            result = kg_manager.verify_query(query)
+            print(f"\nVerification Result: {result}")
+            
+    finally:
+        kg_manager.close()
 
 if __name__ == "__main__":
-    while True:
-        query = input("Enter a query (or 'exit' to quit): ")
-        if query.lower() == "exit":
-            break
-
-        # Initialize Neo4j Manager
-        neo4j_manager = Neo4jManager(NEO4J_URI, NEO4J_USERNAME, NEO4J_PASSWORD)
-
-        try:
-            handle_query(query, neo4j_manager)
-        finally:
-            neo4j_manager.close()
+    main()
