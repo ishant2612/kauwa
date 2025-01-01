@@ -8,3 +8,5 @@ spacy
 google-api-python-client
 trafilatura
 bs4
+Flask 
+flask-cors

@@ -186,5 +186,6 @@ class VerificationSearchSystem:
         
         return {
             'search_results': sources,
-            'verification': verification_result
+            'verification': verification_result,
+            'score': verification_result['confidence']
         }

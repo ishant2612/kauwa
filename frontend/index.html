@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Knowledge Graph Query Verification</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <h1>Knowledge Graph Query Verification</h1>
+  </header>
+  <main>
+    <section class="query-section">
+      <input type="text" id="query-input" placeholder="Enter your query">
+      <button id="verify-btn">Verify Query</button>
+    </section>
+    <section class="result-section">
+      <h2>Verification Result</h2>
+      <div id="result-container"></div>
+      <h3>Previous Results</h3>
+      <ul id="result-list"></ul>
+    </section>
+    <section class="graph-section">
+      <h2>Graph Visualization</h2>
+      <div id="graph-container">
+        <!-- Add some placeholder graph data -->
+        <div class="node">Node 1</div>
+        <div class="node">Node 2</div>
+        <div class="edge">Edge 1 → Node 2</div>
+      </div>
+    </section>
+  </main>
+
+  <div id="loader" class="loader" style="display:none;"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>

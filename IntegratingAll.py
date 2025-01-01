@@ -119,7 +119,7 @@ def main():
                 break
             
             result = kg_manager.verify_query(query)
-            print(f"\nVerification Result: {result}")
+            print(f"\nVerification Result: {result} with ")
             
     finally:
         kg_manager.close()
