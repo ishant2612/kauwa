@@ -1,7 +1,7 @@
 from neo4j import GraphDatabase
 from verification.search_system import VerificationSearchSystem
 from verification.enhanced_search_system import VerificationAgent
-from config import API_KEY, CSE_ID, GSE_API_KEY
+from config import API_KEY, CSE_ID, GSE_API_KEY , URI, USERNAME, PASSWORD
 import hashlib
 import json
 import numpy as np
@@ -108,9 +108,9 @@ class KnowledgeGraphManager:
 
 def main():
     # Neo4j connection details
-    uri = "bolt://localhost:7687"
-    username = "neo4j"
-    password = "ABCD1234"  
+    uri = URI
+    username = USERNAME
+    password = PASSWORD
 
     kg_manager = KnowledgeGraphManager(uri, username, password)
     
