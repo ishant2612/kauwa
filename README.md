@@ -57,12 +57,6 @@ This system verifies the validity of claims passed from the frontend by analyzin
     - Add your `URI`, `USERNAME`, and `PASSWORD` from the Neo4j database to `config.py`.
 6. Run the `index.html` file on a live server.
 
----
-
-## Future Improvements
-- Enhance web scraping efficiency with Beautiful Soup.
-- Optimize semantic similarity matching algorithms.
-- Expand the Neo4j knowledge graph for better scalability.
 
 ---
 
