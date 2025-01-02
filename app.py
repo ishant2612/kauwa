@@ -6,8 +6,14 @@ from config import API_KEY, CSE_ID
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
-# Initialize KnowledgeGraphManager with Neo4j connection details
-kg_manager = KnowledgeGraphManager(uri="bolt://localhost:7687", username="neo4j", password="ABCD1234")
+# Try to initialize KnowledgeGraphManager with Neo4j connection details
+try:
+    kg_manager = KnowledgeGraphManager(uri="bolt://localhost:7687", username="neo4j", password="ABCD1234")
+    neo4j_connected = True
+except Exception as e:
+    print(f"Neo4j connection failed: {e}")
+    kg_manager = KnowledgeGraphManager()  # Initialize without Neo4j
+    neo4j_connected = False
 
 @app.route('/verify', methods=['POST'])
 def verify_query():
@@ -23,14 +29,17 @@ def verify_query():
         result = kg_manager.verify_query(query)
 
         # Return the result to the front-end as JSON
-        return jsonify({"result": result})
+        return jsonify({"result": result, "neo4j_connected": neo4j_connected})
     except Exception as e:
         # Handle any errors that may occur
         return jsonify({"error": str(e)}), 500
 
 @app.route('/health', methods=['GET'])
 def health_check():
-    return jsonify({"status": "ok"}), 200  # A simple health check route
+    return jsonify({
+        "status": "ok",
+        "neo4j_connected": neo4j_connected
+    }), 200  # A simple health check route
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5001)  # Run the Flask app on port 5000
+    app.run(debug=True, port=5001)  # Run the Flask app on port 5001

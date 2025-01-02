@@ -96,12 +96,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
           // Hide loader and display result
           loader.style.display = "none";
-          resultText.textContent = `Fact check result: ${data.result || 'True'}`;
+          resultText.textContent = `Fact check result: ${data.result}`;
           result.classList.remove('hidden');
 
           // Add query and result to previous outputs
           const li = document.createElement('li');
-          li.textContent = `${factToCheck} → ${data.result || 'True'}`;
+          li.textContent = `${factToCheck} → ${data.result}`;
           previousOutputs.insertBefore(li, previousOutputs.firstChild);
 
           // Keep only the last 5 outputs
