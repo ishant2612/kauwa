@@ -21,7 +21,7 @@ class VerificationAgent:
         api_key: str,
         cse_id: str,
         gse_api_key: str,
-        model: str = "mixtral-8x7b-32768"  # Best balance of performance and speed
+        model: str = "llama-3.1-8b-instant"  # Best balance of performance and speed
     ):
         self.client = groq.Groq(api_key=api_key)
         self.model = model
@@ -36,20 +36,22 @@ class VerificationAgent:
         
 Claim: {claim}
 
-Source Text: {source_text}
+Source Text: {source_text[:512]}
 
 Instructions:
+0. Ignore the tenses in the source and claim texts and focus on the meaning 
 1. Carefully analyze if the claim's meaning matches the source
 2. Look for explicit evidence that supports or contradicts the claim
 3. Consider any missing context or ambiguities
 4. Determine if the source provides sufficient information
 5. Determine if the fact listed in the claim is a historical event
+6. Give true if the claim is partially or fully supported by the source text, otherwise give false
 
 Provide output in this format:
-VERIFIED: [true/false]
-CONFIDENCE: [0-100]
-QUOTES: [relevant quotes from source]
-REASONING: [your step-by-step analysis]
+VERIFIED: [true/false]  (based on the reasoning)
+CONFIDENCE: [0 to 100]
+QUOTES: [relevant quotes from source](all in single line dont use new line)
+REASONING: [your step-by-step analysis](all in single line dont use new line)
 """
         
         try:
@@ -59,8 +61,8 @@ REASONING: [your step-by-step analysis]
                     {"role": "system", "content": "You are a precise fact verification system."},
                     {"role": "user", "content": prompt}
                 ],
-                temperature=0.1,
-                max_tokens=1000
+                temperature=1,
+                max_tokens=1024
             )
             result = response.choices[0].message.content
             return self._parse_response(result)
@@ -113,10 +115,8 @@ REASONING: [your step-by-step analysis]
         Verify a claim against multiple sources in batches
         """
         results = []
-        for i in range(0, len(sources), batch_size):
-            batch = sources[i:i + batch_size]
-            batch_results = [self.verify(claim, source) for source in batch]
-            results.extend(batch_results)
+        batch_results = [self.verify(claim, source) for source in sources]
+        results.extend(batch_results)
         return results
 
     def google_search(self, query: str, num_results: int = 5):
@@ -173,11 +173,17 @@ REASONING: [your step-by-step analysis]
         # Verify the claim
         verification_result = self.batch_verify(query, sources)
         print(verification_result)
-        most_confident_result = max(verification_result, key=lambda x: x.confidence)
+        last_conf = 0
+        mcr = None
+        for i in verification_result:
+            if(i.is_verified and i.confidence>last_conf):
+                mcr = i
+                last_conf = i.confidence
+        
         return {
             'verification': {
-                'verdict': 'TRUE' if most_confident_result.is_verified else 'FALSE',
-                'confidence': most_confident_result.confidence
+                'verdict': 'TRUE' if mcr and mcr.is_verified else 'FALSE',
+                'confidence': last_conf
             }
         }
 
