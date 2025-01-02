@@ -10,3 +10,4 @@ trafilatura
 bs4
 Flask 
 flask-cors
+groq
