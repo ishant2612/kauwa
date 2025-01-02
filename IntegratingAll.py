@@ -120,10 +120,9 @@ class KnowledgeGraphManager:
 
 def main():
     # Neo4j connection details
-    uri = "bolt://localhost:7687"
-    username = "neo4j"
-    password = "ABCD1234"  
-
+    uri = URI
+    username = USERNAME
+    password = PASSWORD
     kg_manager = KnowledgeGraphManager(uri, username, password)
     
     try:
