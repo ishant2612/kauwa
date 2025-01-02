@@ -1,4 +1,6 @@
-# Fact-Checking System
+![WhatsApp Image 2025-01-03 at 12 21 27 AM](https://github.com/user-attachments/assets/e1320a1e-9dc8-44f7-b07a-9985cee5c2df)
+
+# Kauwa: Fact-Checking System
 
 ## Overview
 This system verifies the validity of claims passed from the frontend by analyzing related articles and matching them against the claim on various parameters. The results are displayed on the frontend, and verified claims are stored in a Neo4j knowledge graph for future reference.
