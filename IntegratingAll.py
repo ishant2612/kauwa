@@ -1,6 +1,7 @@
 from neo4j import GraphDatabase
 from verification.search_system import VerificationSearchSystem
-from config import API_KEY, CSE_ID
+from verification.enhanced_search_system import VerificationAgent
+from config import API_KEY, CSE_ID, GSE_API_KEY
 import hashlib
 import json
 import numpy as np
@@ -8,9 +9,10 @@ import numpy as np
 class KnowledgeGraphManager:
     def __init__(self, uri, username, password):
         self.driver = GraphDatabase.driver(uri, auth=(username, password))
-        self.verification_system = VerificationSearchSystem(
+        self.verification_system = VerificationAgent(
             api_key=API_KEY,
-            cse_id=CSE_ID
+            cse_id=CSE_ID,
+            gse_api_key=GSE_API_KEY
         )
         # Create constraints
         self._initialize_database()
