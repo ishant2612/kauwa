@@ -1,0 +1,46 @@
+.metrics-container {
+  background-color: var(--background-secondary);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin: 1rem 0;
+}
+
+.metrics-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.metric {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.metric-label {
+  width: 100px;
+  color: var(--text-secondary);
+}
+
+.metric-bar {
+  flex-grow: 1;
+  height: 8px;
+  background-color: var(--background-primary);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.metric-progress {
+  height: 100%;
+  background-color: var(--accent-purple);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.metric-value {
+  width: 50px;
+  text-align: right;
+  color: var(--text-secondary);
+}
+

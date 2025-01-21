@@ -1,0 +1,53 @@
+.fact-check-container {
+  background-color: transparent;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin: 1rem 0;
+}
+
+.tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+
+.tab {
+  padding: 0.5rem 1rem;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.tab.active {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+.input-area {
+  width: 100%;
+  height: 150px;
+  background-color: var(--background-primary);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: var(--text-primary);
+  padding: 1rem;
+  margin: 1rem 0;
+  resize: none;
+}
+
+.check-button {
+  width: 100%;
+  padding: 0.75rem;
+  background-color: var(--accent-purple);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.check-button:hover {
+  opacity: 0.9;
+}
+
