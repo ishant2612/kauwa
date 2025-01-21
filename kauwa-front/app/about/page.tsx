@@ -25,7 +25,7 @@ const teamMembers = [
   },
   {
     name: "Varun Gupta",
-    role: "Backend / System architecture Engineer",
+    role: "Backend / System Architecture Engineer",
     photo: "/varun.jpg",
     contact: "diana@example.com",
   },
