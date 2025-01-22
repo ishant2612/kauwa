@@ -96,27 +96,47 @@ class KnowledgeGraphManager:
 
     @staticmethod
     def _get_query_truth_value(tx, query_id):
+        
         query = "MATCH (q:Query {query_id: $query_id}) RETURN q.is_true AS is_true"
         result = tx.run(query, query_id=query_id)
         record = result.single()
         return record["is_true"] if record else None
 
+    # def verify_query(self, query):
+    #     """Verify query using VerificationSearchSystem and store in knowledge graph if possible"""
+    #     if self.driver:
+    #         # First check if query exists in knowledge graph
+    #         existing_truth = self.get_query_truth_value(query)
+    #         if existing_truth is not None:
+    #             return existing_truth
+
+    #     # If not in graph, verify using VerificationSearchSystem
+    #     verification_result = self.verification_system.process_query(query)
+        
+    #     # Add to knowledge graph if connected
+    #     if self.driver and verification_result["verification"]["verdict"] == "TRUE":
+    #         self.add_query_to_graph(query, verification_result)
+        
+    #     return verification_result['verification']['verdict'] == 'TRUE'
     def verify_query(self, query):
-        """Verify query using VerificationSearchSystem and store in knowledge graph if possible"""
         if self.driver:
-            # First check if query exists in knowledge graph
+            # First check if the query exists in the knowledge graph
             existing_truth = self.get_query_truth_value(query)
             if existing_truth is not None:
-                return existing_truth
+                # Returning default confidence and reason for existing data in graph
+                return existing_truth, 1.0, "Retrieved from knowledge graph"
 
-        # If not in graph, verify using VerificationSearchSystem
+        # If not in the graph, verify using VerificationAgent
         verification_result = self.verification_system.process_query(query)
-        
-        # Add to knowledge graph if connected
-        if self.driver and verification_result["verification"]["verdict"] == "TRUE":
+        boolean_result = verification_result['verification']['verdict'] == 'TRUE'
+        confidence = float(verification_result['verification']['confidence'])
+        reason = verification_result.get('verification').get('reason', "Reason not available")
+
+        # Add to knowledge graph if connected and result is true
+        if self.driver and boolean_result:
             self.add_query_to_graph(query, verification_result)
-        
-        return verification_result['verification']['verdict'] == 'TRUE'
+
+        return boolean_result, confidence, reason
 
 def main():
     # Neo4j connection details
