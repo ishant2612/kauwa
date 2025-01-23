@@ -66,9 +66,7 @@ export default function Dashboard() {
       setPreviousOutputs((prev) => [result, ...prev]);
 
       // Update bar graph data
-      const newTag = ["News", "Sports", "Tech", "Politics"][
-        Math.floor(Math.random() * 4)
-      ];
+      const newTag = data.result[3][0];
       setBarData((prev) => {
         const existingTag = prev.find((item) => item.tag === newTag);
         if (existingTag) {
