@@ -4,6 +4,6 @@ NUM_RESULTS = 10
 API_KEY="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"
 
 # 
-URI = "bolt://localhost:7687"
+URI = "neo4j+s://90cde3c0.databases.neo4j.io"
 USERNAME = "neo4j"
-PASSWORD = "ABCD1234"
+PASSWORD = "uiEGfrnt1vrRmin_pSCRn8euyxWBTs7QH-JsaWNQwuQ"

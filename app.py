@@ -1,14 +1,14 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS  # To handle CORS if your front-end and back-end are on different servers
 from IntegratingAll import KnowledgeGraphManager  # Import the KnowledgeGraphManager class
-from config import API_KEY, CSE_ID
+from config import API_KEY, CSE_ID, URI, USERNAME, PASSWORD
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
 # Try to initialize KnowledgeGraphManager with Neo4j connection details
 try:
-    kg_manager = KnowledgeGraphManager(uri="bolt://localhost:7687", username="neo4j", password="ABCD1234")
+    kg_manager = KnowledgeGraphManager(uri=URI, username=USERNAME, password=PASSWORD)
     neo4j_connected = True
 except Exception as e:
     print(f"Neo4j connection failed: {e}")
