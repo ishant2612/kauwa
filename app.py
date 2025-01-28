@@ -51,8 +51,11 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS  # To handle CORS if your front-end and back-end are on different servers
 from config import API_KEY, CSE_ID, URI, USERNAME, PASSWORD
 from IntegratingAll import KnowledgeGraphManager
+import os
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}})  # Enable CORS for all routes
+
+CORS(app, resources={r"/*": {"origins": ["https://kauwa-314j.vercel.app/dashboard", "http://localhost:3000"]}})
+ # Enable CORS for all routes
 
 # Variable to hold the KnowledgeGraphManager object only when needed
 kg_manager = None
@@ -101,4 +104,5 @@ def health_check():
     }), 200  # A simple health check route
 
 if __name__ == '__main__':
-    app.run(debug=False, port=5000)  # Run the Flask app on port 5001 (debug mode off in production)
+    port = int(os.environ.get('PORT', 5000))  # Use PORT from env or fallback to 5000
+    app.run(debug=False, host='0.0.0.0', port=port)  # Run the Flask app on port 5001 (debug mode off in production)
