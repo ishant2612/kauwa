@@ -34,11 +34,14 @@ export default function Dashboard() {
     setCurrentOutput(null);
 
     try {
-      const response = await fetch("http://127.0.0.1:5001/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query }),
-      });
+      const response = await fetch(
+        "http://kauwa-production.up.railway.app/verify",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query }),
+        }
+      );
 
       if (!response.ok) {
         throw new Error("Failed to fetch data from the API");

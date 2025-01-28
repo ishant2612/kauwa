@@ -52,7 +52,7 @@ from flask_cors import CORS  # To handle CORS if your front-end and back-end are
 from config import API_KEY, CSE_ID, URI, USERNAME, PASSWORD
 from IntegratingAll import KnowledgeGraphManager
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
+CORS(app, resources={r"/*": {"origins": "*"}})  # Enable CORS for all routes
 
 # Variable to hold the KnowledgeGraphManager object only when needed
 kg_manager = None
