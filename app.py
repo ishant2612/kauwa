@@ -101,4 +101,4 @@ def health_check():
     }), 200  # A simple health check route
 
 if __name__ == '__main__':
-    app.run(debug=False, port=5001)  # Run the Flask app on port 5001 (debug mode off in production)
+    app.run(debug=False, port=5000)  # Run the Flask app on port 5001 (debug mode off in production)
