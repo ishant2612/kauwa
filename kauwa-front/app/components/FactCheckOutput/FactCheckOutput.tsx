@@ -1,14 +1,13 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { motion, AnimatePresence } from "framer-motion";
-import { CheckCircle, XCircle } from "lucide-react";
+import { CheckCircle, XCircle, AlertTriangle } from "lucide-react";
 import { Spinner } from "../Spinner/Spinner";
 
 interface FactCheckResult {
   query: string;
   result: boolean;
-  source: string;
-  reasonToTrust: string;
   confidence: number;
+  type: "text" | "video";
 }
 
 interface FactCheckOutputProps {
@@ -23,7 +22,11 @@ export default function FactCheckOutput({
   return (
     <Card className="w-full h-full flex flex-col">
       <CardHeader>
-        <CardTitle>Fact Check Output</CardTitle>
+        <CardTitle>
+          {output?.type === "video"
+            ? "Deepfake Detection Result"
+            : "Fact Check Output"}
+        </CardTitle>
       </CardHeader>
       <CardContent className="flex-grow">
         <AnimatePresence mode="wait">
@@ -51,7 +54,9 @@ export default function FactCheckOutput({
               className="space-y-4 h-full"
             >
               <div>
-                <h3 className="font-semibold text-lg mb-1">Query:</h3>
+                <h3 className="font-semibold text-lg mb-1">
+                  {output.type === "video" ? "Video" : "Query"}:
+                </h3>
                 <p className="text-muted-foreground">{output.query}</p>
               </div>
               <div>
@@ -61,13 +66,25 @@ export default function FactCheckOutput({
                     output.result ? "text-green-500" : "text-red-500"
                   }`}
                 >
-                  {output.result ? (
+                  {output.type === "video" ? (
+                    output.result ? (
+                      <CheckCircle className="w-6 h-6 mr-2" />
+                    ) : (
+                      <AlertTriangle className="w-6 h-6 mr-2" />
+                    )
+                  ) : output.result ? (
                     <CheckCircle className="w-6 h-6 mr-2" />
                   ) : (
                     <XCircle className="w-6 h-6 mr-2" />
                   )}
                   <span className="text-2xl font-bold">
-                    {output.result ? "True" : "False"}
+                    {output.type === "video"
+                      ? output.result
+                        ? "Authentic"
+                        : "Likely Deepfake"
+                      : output.result
+                      ? "True"
+                      : "False"}
                   </span>
                 </div>
               </div>
@@ -81,7 +98,7 @@ export default function FactCheckOutput({
               transition={{ duration: 0.5 }}
               className="flex items-center justify-center h-full min-h-[300px] bg-secondary rounded-md text-muted-foreground"
             >
-              No output yet. Submit a query to see results.
+              No output yet. Submit a query or video to see results.
             </motion.div>
           )}
         </AnimatePresence>

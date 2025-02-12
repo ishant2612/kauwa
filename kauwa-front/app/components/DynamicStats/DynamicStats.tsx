@@ -1,35 +1,62 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { motion } from "framer-motion";
-import { CheckCircle, XCircle, Link, TrendingUp } from "lucide-react";
+import {
+  CheckCircle,
+  XCircle,
+  Link,
+  TrendingUp,
+  AlertTriangle,
+  Video,
+} from "lucide-react";
 
 interface DynamicStatsProps {
+  query: string;
   result: boolean;
-  sourceLink: string;
   confidence: number;
+  sourceLink: string;
   reasonToTrust: string;
+  type: "text" | "video";
 }
 
 export default function DynamicStats({
   result,
-  sourceLink,
   confidence,
-  reasonToTrust,
+  type,
 }: DynamicStatsProps) {
   const stats = [
     {
-      title: "Fact Check Result",
-      value: reasonToTrust,
-      icon: result ? (
-        <CheckCircle className="w-4 h-4 text-green-500" />
-      ) : (
-        <XCircle className="w-4 h-4 text-red-500" />
-      ),
+      title: type === "video" ? "Deepfake Detection" : "Fact Check Result",
+      value:
+        type === "video"
+          ? result
+            ? "Authentic"
+            : "Likely Deepfake"
+          : result
+          ? "True"
+          : "False",
+      icon:
+        type === "video" ? (
+          result ? (
+            <CheckCircle className="w-4 h-4 text-green-500" />
+          ) : (
+            <AlertTriangle className="w-4 h-4 text-red-500" />
+          )
+        ) : result ? (
+          <CheckCircle className="w-4 h-4 text-green-500" />
+        ) : (
+          <XCircle className="w-4 h-4 text-red-500" />
+        ),
     },
     {
-      title: "Source Reliability",
-      value: getSourceReliability(sourceLink),
-      icon: <Link className="w-4 h-4 text-blue-500" />,
+      title: "Input Type",
+      value: type === "video" ? "Video" : "Text",
+      icon:
+        type === "video" ? (
+          <Video className="w-4 h-4 text-blue-500" />
+        ) : (
+          <Link className="w-4 h-4 text-blue-500" />
+        ),
     },
     {
       title: "Confidence Level",
@@ -37,8 +64,8 @@ export default function DynamicStats({
       icon: <TrendingUp className="w-4 h-4 text-purple-500" />,
     },
     {
-      title: "Fact Check Strength",
-      value: getFactCheckStrength(confidence),
+      title: type === "video" ? "Detection Strength" : "Fact Check Strength",
+      value: getStrength(confidence),
       icon: <TrendingUp className="w-4 h-4 text-yellow-500" />,
     },
   ];
@@ -75,16 +102,7 @@ export default function DynamicStats({
   );
 }
 
-function getSourceReliability(sourceLink: string): string {
-  // This is a placeholder function. In a real-world scenario, you'd want to
-  // implement a more sophisticated method to determine source reliability.
-  const domain = new URL(sourceLink).hostname;
-  const reliableDomains = ["gov", "edu", "org"];
-  const tld = domain.split(".").pop();
-  return reliableDomains.includes(tld || "") ? "High" : "Medium";
-}
-
-function getFactCheckStrength(confidence: number): string {
+function getStrength(confidence: number): string {
   if (confidence >= 90) return "Very Strong";
   if (confidence >= 70) return "Strong";
   if (confidence >= 50) return "Moderate";
