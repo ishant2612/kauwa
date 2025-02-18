@@ -2,7 +2,7 @@
 
 import type React from "react";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, type KeyboardEvent } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -25,7 +25,7 @@ export default function FactCheckInput({ onFactCheck }: FactCheckInputProps) {
   );
   const [file, setFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
+  const textAreaRef = useRef<HTMLTextAreaElement>(null);
   const handleFactCheck = () => {
     if (activeTab === "text" && query.trim()) {
       onFactCheck(query, "text");
@@ -40,8 +40,22 @@ export default function FactCheckInput({ onFactCheck }: FactCheckInputProps) {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setFile(e.target.files[0]);
+      onFactCheck(e.target.files[0].name, activeTab, e.target.files[0]);
     }
   };
+
+  const handlekeyPress = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleFactCheck();
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "text" && textAreaRef.current) {
+      textAreaRef.current.focus();
+    }
+  }, [activeTab]);
 
   return (
     <Card className="w-full h-full flex flex-col">
@@ -63,10 +77,12 @@ export default function FactCheckInput({ onFactCheck }: FactCheckInputProps) {
           </TabsList>
           <TabsContent value="text" className="flex-grow flex flex-col">
             <Textarea
+              ref={textAreaRef}
               placeholder="Enter text to fact-check"
               className="flex-grow min-h-[150px] mb-4"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
+              onKeyPress={handlekeyPress}
             />
           </TabsContent>
           <TabsContent value="video" className="flex-grow flex flex-col">
