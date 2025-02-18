@@ -1,3 +1,5 @@
+"use client";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { motion } from "framer-motion";
@@ -8,55 +10,34 @@ import {
   TrendingUp,
   AlertTriangle,
   Video,
+  ImageIcon,
 } from "lucide-react";
 
 interface DynamicStatsProps {
-  query: string;
   result: boolean;
   confidence: number;
-  sourceLink: string;
-  reasonToTrust: string;
-  type: "text" | "video";
+  type: "text" | "video" | "image";
+  contentVerification?: boolean;
+  deepfakeDetection?: boolean;
 }
 
 export default function DynamicStats({
   result,
   confidence,
   type,
+  contentVerification,
+  deepfakeDetection,
 }: DynamicStatsProps) {
   const stats = [
     {
-      title: type === "video" ? "Deepfake Detection" : "Fact Check Result",
-      value:
-        type === "video"
-          ? result
-            ? "Authentic"
-            : "Likely Deepfake"
-          : result
-          ? "True"
-          : "False",
-      icon:
-        type === "video" ? (
-          result ? (
-            <CheckCircle className="w-4 h-4 text-green-500" />
-          ) : (
-            <AlertTriangle className="w-4 h-4 text-red-500" />
-          )
-        ) : result ? (
-          <CheckCircle className="w-4 h-4 text-green-500" />
-        ) : (
-          <XCircle className="w-4 h-4 text-red-500" />
-        ),
+      title: getTitle(type),
+      value: getValue(type, result, contentVerification, deepfakeDetection),
+      icon: getIcon(type, result, contentVerification, deepfakeDetection),
     },
     {
       title: "Input Type",
-      value: type === "video" ? "Video" : "Text",
-      icon:
-        type === "video" ? (
-          <Video className="w-4 h-4 text-blue-500" />
-        ) : (
-          <Link className="w-4 h-4 text-blue-500" />
-        ),
+      value: type.charAt(0).toUpperCase() + type.slice(1),
+      icon: getInputTypeIcon(type),
     },
     {
       title: "Confidence Level",
@@ -64,7 +45,7 @@ export default function DynamicStats({
       icon: <TrendingUp className="w-4 h-4 text-purple-500" />,
     },
     {
-      title: type === "video" ? "Detection Strength" : "Fact Check Strength",
+      title: getStrengthTitle(type),
       value: getStrength(confidence),
       icon: <TrendingUp className="w-4 h-4 text-yellow-500" />,
     },
@@ -100,6 +81,85 @@ export default function DynamicStats({
       ))}
     </div>
   );
+}
+
+function getTitle(type: string): string {
+  switch (type) {
+    case "video":
+      return "Deepfake Detection";
+    case "image":
+      return "Image Analysis";
+    default:
+      return "Fact Check Result";
+  }
+}
+
+function getValue(
+  type: string,
+  result: boolean,
+  contentVerification?: boolean,
+  deepfakeDetection?: boolean
+): string {
+  if (type === "image") {
+    return `Content: ${contentVerification ? "True" : "False"}, Deepfake: ${
+      deepfakeDetection ? "Authentic" : "Likely Fake"
+    }`;
+  }
+  return type === "video"
+    ? result
+      ? "Authentic"
+      : "Likely Deepfake"
+    : result
+    ? "True"
+    : "False";
+}
+
+function getIcon(
+  type: string,
+  result: boolean,
+  contentVerification?: boolean,
+  deepfakeDetection?: boolean
+) {
+  if (type === "image") {
+    return contentVerification && deepfakeDetection ? (
+      <CheckCircle className="w-4 h-4 text-green-500" />
+    ) : (
+      <AlertTriangle className="w-4 h-4 text-red-500" />
+    );
+  }
+  return type === "video" ? (
+    result ? (
+      <CheckCircle className="w-4 h-4 text-green-500" />
+    ) : (
+      <AlertTriangle className="w-4 h-4 text-red-500" />
+    )
+  ) : result ? (
+    <CheckCircle className="w-4 h-4 text-green-500" />
+  ) : (
+    <XCircle className="w-4 h-4 text-red-500" />
+  );
+}
+
+function getInputTypeIcon(type: string) {
+  switch (type) {
+    case "video":
+      return <Video className="w-4 h-4 text-blue-500" />;
+    case "image":
+      return <ImageIcon className="w-4 h-4 text-blue-500" />;
+    default:
+      return <Link className="w-4 h-4 text-blue-500" />;
+  }
+}
+
+function getStrengthTitle(type: string): string {
+  switch (type) {
+    case "video":
+      return "Detection Strength";
+    case "image":
+      return "Analysis Strength";
+    default:
+      return "Fact Check Strength";
+  }
 }
 
 function getStrength(confidence: number): string {

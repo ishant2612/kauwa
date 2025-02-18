@@ -1,13 +1,17 @@
+"use client";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { motion, AnimatePresence } from "framer-motion";
-import { CheckCircle, XCircle, AlertTriangle } from "lucide-react";
+import { CheckCircle, AlertTriangle } from "lucide-react";
 import { Spinner } from "../Spinner/Spinner";
 
 interface FactCheckResult {
   query: string;
   result: boolean;
   confidence: number;
-  type: "text" | "video";
+  type: "text" | "video" | "image";
+  contentVerification?: boolean;
+  deepfakeDetection?: boolean;
 }
 
 interface FactCheckOutputProps {
@@ -24,7 +28,9 @@ export default function FactCheckOutput({
       <CardHeader>
         <CardTitle>
           {output?.type === "video"
-            ? "Deepfake Detection Result"
+            ? "Video Analysis Result"
+            : output?.type === "image"
+            ? "Image Analysis Result"
             : "Fact Check Output"}
         </CardTitle>
       </CardHeader>
@@ -55,39 +61,35 @@ export default function FactCheckOutput({
             >
               <div>
                 <h3 className="font-semibold text-lg mb-1">
-                  {output.type === "video" ? "Video" : "Query"}:
+                  {output.type === "text" ? "Query" : "File"}:
                 </h3>
                 <p className="text-muted-foreground">{output.query}</p>
               </div>
-              <div>
-                <h3 className="font-semibold text-lg mb-1">Result:</h3>
-                <div
-                  className={`flex items-center ${
-                    output.result ? "text-green-500" : "text-red-500"
-                  }`}
-                >
-                  {output.type === "video" ? (
-                    output.result ? (
-                      <CheckCircle className="w-6 h-6 mr-2" />
-                    ) : (
-                      <AlertTriangle className="w-6 h-6 mr-2" />
-                    )
-                  ) : output.result ? (
-                    <CheckCircle className="w-6 h-6 mr-2" />
-                  ) : (
-                    <XCircle className="w-6 h-6 mr-2" />
-                  )}
-                  <span className="text-2xl font-bold">
-                    {output.type === "video"
-                      ? output.result
-                        ? "Authentic"
-                        : "Likely Deepfake"
-                      : output.result
-                      ? "True"
-                      : "False"}
-                  </span>
-                </div>
-              </div>
+              {output.type === "image" ? (
+                <>
+                  <ResultItem
+                    title="Content Verification"
+                    result={output.contentVerification}
+                    trueText="True Content"
+                    falseText="False Content"
+                  />
+                  <ResultItem
+                    title="Deepfake Detection"
+                    result={output.deepfakeDetection}
+                    trueText="Authentic"
+                    falseText="Likely Deepfake"
+                  />
+                </>
+              ) : (
+                <ResultItem
+                  title="Result"
+                  result={output.result}
+                  trueText={output.type === "video" ? "Authentic" : "True"}
+                  falseText={
+                    output.type === "video" ? "Likely Deepfake" : "False"
+                  }
+                />
+              )}
             </motion.div>
           ) : (
             <motion.div
@@ -98,11 +100,40 @@ export default function FactCheckOutput({
               transition={{ duration: 0.5 }}
               className="flex items-center justify-center h-full min-h-[300px] bg-secondary rounded-md text-muted-foreground"
             >
-              No output yet. Submit a query or video to see results.
+              No output yet. Submit a query, video, or image to see results.
             </motion.div>
           )}
         </AnimatePresence>
       </CardContent>
     </Card>
+  );
+}
+
+interface ResultItemProps {
+  title: string;
+  result: boolean | undefined;
+  trueText: string;
+  falseText: string;
+}
+
+function ResultItem({ title, result, trueText, falseText }: ResultItemProps) {
+  return (
+    <div>
+      <h3 className="font-semibold text-lg mb-1">{title}:</h3>
+      <div
+        className={`flex items-center ${
+          result ? "text-green-500" : "text-red-500"
+        }`}
+      >
+        {result ? (
+          <CheckCircle className="w-6 h-6 mr-2" />
+        ) : (
+          <AlertTriangle className="w-6 h-6 mr-2" />
+        )}
+        <span className="text-2xl font-bold">
+          {result ? trueText : falseText}
+        </span>
+      </div>
+    </div>
   );
 }
