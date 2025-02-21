@@ -68,7 +68,7 @@ def predict():
         video_input = np.expand_dims(frames, axis=0)
         pred_prob = model.predict(video_input)[0][0]
         label = "Real" if pred_prob >= 0.8 else "Deepfake"
-        os.remove(video_path)  # Clean up
+        # os.remove(video_path)  # Clean up
         return jsonify({"label": label, "probability": float(pred_prob)})
     except Exception as e:
         return jsonify({"error": str(e)}), 500

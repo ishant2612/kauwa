@@ -71,6 +71,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.keras.applications.xception import preprocess_input
 from tensorflow.keras.models import load_model
+from imagework import predict
 
 from config import API_KEY, CSE_ID, URI, USERNAME, PASSWORD
 from IntegratingAll import KnowledgeGraphManager
@@ -156,6 +157,9 @@ def predict_video(video_path):
     except Exception as e:
         return {"error": str(e)}
 
+def predict_image(image_path):
+    return predict(image_path)
+    
 # ------------------------------
 # Unified API Endpoint: /process
 # ------------------------------
@@ -179,6 +183,17 @@ def process_input():
             os.remove(video_path)
         return jsonify({"deepfake_result": result})
     
+    if "image" in request.files:
+        image = request.files["image"]
+        if not image:
+            return jsonify({"error": "No image file uploaded"}), 400
+        
+        image_path = f"temp_{image.filename}"
+        image.save(image_path)
+        result = predict_image(image_path)
+        if os.path.exists(image_path):
+            os.remove(image_path)
+        return jsonify({"deepfake_result": result})
     # Otherwise, expect a JSON payload for text verification.
     data = request.get_json()
     if data and "query" in data:

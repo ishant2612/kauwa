@@ -10,13 +10,14 @@ import PreviousOutputs from "../components/PreviousOutputs/PreviousOutputs";
 import { ResponsiveBar } from "@nivo/bar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
+// Updated interface with 'reason' instead of reasonToTrust
 interface FactCheckResult {
   query: string;
   result: boolean;
   confidence: number;
   type: "text" | "video" | "image";
   source?: string;
-  reasonToTrust?: string;
+  reason?: string;
   contentVerification?: boolean;
   deepfakeDetection?: boolean;
 }
@@ -52,35 +53,22 @@ export default function Dashboard() {
         }
 
         const data = await response.json();
-        // Assuming your text verification API returns an array:
-        // data.result: [boolean, confidence, reasonToTrust, labels]
+        // data.result: [boolean, confidence, reason, labels]
         let confidence = data.result[1];
-        const reasonToTrust = data.result[2];
+        const reason = data.result[2];
 
-        if (reasonToTrust === "Retrieved from knowledge graph") {
+        if (reason === "Retrieved from knowledge graph") {
           confidence = 100;
         }
 
-        let result: FactCheckResult;
-        if (type === "image") {
-          result = {
-            query,
-            result: Math.random() > 0.5,
-            confidence: Math.floor(Math.random() * 100),
-            type,
-            contentVerification: Math.random() > 0.5,
-            deepfakeDetection: Math.random() > 0.5,
-          };
-        } else {
-          result = {
-            query,
-            result: data.result[0],
-            confidence,
-            source: "https://example.com/fact-check",
-            reasonToTrust,
-            type,
-          };
-        }
+        const result: FactCheckResult = {
+          query,
+          result: data.result[0],
+          confidence,
+          source: "https://example.com/fact-check",
+          reason,
+          type,
+        };
 
         setCurrentOutput(result);
         setPreviousOutputs((prev) => [result, ...prev.slice(0, 4)]);
@@ -98,8 +86,86 @@ export default function Dashboard() {
       } catch (error) {
         console.error("Error during API call:", error);
       }
+    } else if (type === "image") {
+      if (!file) {
+        console.error("No image file provided.");
+        setIsProcessing(false);
+        return;
+      }
+      try {
+        const formData = new FormData();
+        formData.append("image", file);
+        const response = await fetch("http://127.0.0.1:5000/process", {
+          method: "POST",
+          body: formData,
+        });
+        if (!response.ok) {
+          throw new Error("Failed to fetch data from the API");
+        }
+        const data = await response.json();
+        // The API returns an object with key "deepfake_result" containing:
+        // { "Extracted OCR Text": string,
+        //   "Cropped image paths": string[],
+        //   "Detected URLs": string[],
+        //   "Similarity scores": [ [null|string, number], ... ],
+        //   "Parsed Verdict": string,
+        //   "Final Verdict": string }
+        var imageResult = data.deepfake_result;
+        imageResult = JSON.parse(imageResult);
+        console.log("Image Result:", imageResult);
+        // Compute average similarity score from the "Similarity scores" array,
+        // considering all valid numeric scores.
+        let sum = 0;
+        let count = 0;
+        if (
+          Array.isArray(imageResult["Similarity scores"]) &&
+          imageResult["Similarity scores"].length > 0
+        ) {
+          imageResult["Similarity scores"].forEach((pair: any[]) => {
+            const score = Number(pair[1]);
+            console.log("Score:", score);
+            if (score > 0) {
+              sum += score;
+              count++;
+            }
+          });
+        }
+        console.log("Sum:", sum, "Count:", count);
+        const avgScore = count > 0 ? Math.floor((sum / count) * 100) : 0;
+        console.log("Average similarity score:", avgScore);
+        // Determine content verification based on "Parsed Verdict"
+        const verdict = imageResult["Parsed Verdict"];
+        const contentVerified =
+          verdict && verdict.toLowerCase() === "justified" ? true : false;
+
+        const result: FactCheckResult = {
+          query,
+          result: contentVerified,
+          confidence: avgScore,
+          type,
+          source: "Image Analysis Model",
+          reason: imageResult["Final Verdict"],
+          contentVerification: contentVerified,
+        };
+
+        setCurrentOutput(result);
+        setPreviousOutputs((prev) => [result, ...prev.slice(0, 4)]);
+
+        // Update barData using the verdict as the tag
+        const newTag = verdict || "unknown";
+        setBarData((prev) => {
+          const existingTag = prev.find((item) => item.tag === newTag);
+          if (existingTag) {
+            return prev.map((item) =>
+              item.tag === newTag ? { ...item, count: item.count + 1 } : item
+            );
+          }
+          return [...prev, { tag: newTag, count: 1 }];
+        });
+      } catch (error) {
+        console.error("Error during image processing:", error);
+      }
     } else if (type === "video") {
-      // For video, use FormData to upload the file
       if (!file) {
         console.error("No video file provided.");
         setIsProcessing(false);
@@ -108,7 +174,7 @@ export default function Dashboard() {
       try {
         const formData = new FormData();
         formData.append("video", file);
-        // Optionally, you can also include a query string if needed:
+        // Optionally, include the query if needed:
         // formData.append("query", query);
 
         const response = await fetch("http://127.0.0.1:5000/process", {
@@ -123,19 +189,17 @@ export default function Dashboard() {
         const data = await response.json();
         // Expecting data.deepfake_result: { label: "Real" or "Deepfake", probability: number }
         const videoResult = data.deepfake_result;
-        // Map deepfake result into FactCheckResult shape
         const result: FactCheckResult = {
           query,
-          result: videoResult.label === "Real", // True if Real, false if Deepfake
-          confidence: videoResult.probability * 100, // Convert probability to percentage if needed
+          result: videoResult.label === "Real",
+          confidence: videoResult.probability * 100,
           type,
           source: "Deepfake Model",
-          reasonToTrust: "Deepfake detection",
+          reason: "Deepfake detection", // You may expand on this if needed.
         };
 
         setCurrentOutput(result);
         setPreviousOutputs((prev) => [result, ...prev.slice(0, 4)]);
-        // Optionally, you might update barData if you wish to reflect video results too.
       } catch (error) {
         console.error("Error during API call:", error);
       }
@@ -189,7 +253,7 @@ export default function Dashboard() {
                 confidence={currentOutput.confidence}
                 type={currentOutput.type}
                 sourceLink={currentOutput.source}
-                reasonToTrust={currentOutput.reasonToTrust}
+                reason={currentOutput.reason}
                 contentVerification={currentOutput.contentVerification}
                 deepfakeDetection={currentOutput.deepfakeDetection}
               />

@@ -1,9 +1,9 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { motion } from "framer-motion"
-import { Button } from "@/components/ui/button"
-import Navbar from "./components/Navbar/Navbar"
+import Link from "next/link";
+import { motion } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import Navbar from "./components/Navbar/Navbar";
 
 export default function LandingPage() {
   return (
@@ -25,8 +25,9 @@ export default function LandingPage() {
             transition={{ duration: 0.5, delay: 0.4 }}
             className="text-xl mb-12 text-muted-foreground"
           >
-            Uncover the truth with our advanced AI-powered fact-checking tool. Verify claims, analyze sources, and make
-            informed decisions in real-time.
+            Uncover the truth with our advanced AI-powered fact-checking tool.
+            Verify claims, analyze sources, and make informed decisions in
+            real-time.
           </motion.p>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -34,7 +35,10 @@ export default function LandingPage() {
             transition={{ duration: 0.5, delay: 0.6 }}
           >
             <Link href="/dashboard">
-              <Button size="lg" className="text-sm px-8 py-6 bg-slate-400 rounded mt-10">
+              <Button
+                size="lg"
+                className="text-sm px-8 py-6 bg-slate-400 rounded mt-10"
+              >
                 Get Started
               </Button>
             </Link>
@@ -47,9 +51,8 @@ export default function LandingPage() {
         transition={{ duration: 0.5, delay: 0.8 }}
         className="py-8 text-center text-sm text-muted-foreground"
       >
-        © 2025 Kauwa Fact-Checker. Created By Ishant Verma.
+        © 2025 Kauwa Fact-Checker. Created By WeThePeople.
       </motion.footer>
     </div>
-  )
+  );
 }
-
