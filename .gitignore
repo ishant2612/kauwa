@@ -1,0 +1,6 @@
+# Ignore the vision-key.json file inside the imagemodel directory
+imagemodel/vision-key.json
+
+# Ignore node_modules folder
+node_modules/
+imageModel/vision-key.json
