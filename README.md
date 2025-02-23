@@ -8,6 +8,8 @@ Additionally, the system now includes:
 - **Deepfake Detector**: Identifies manipulated or synthetic videos.
 - **Image Context Analyzer**: Analyzes the context of images to detect inconsistencies or misleading content.
 
+**Note:** The Image Context Analyzer requires a secret key to function, and this key is not sharable.
+
 ---
 
 ## Working
