@@ -189,10 +189,11 @@ export default function Dashboard() {
         const data = await response.json();
         // Expecting data.deepfake_result: { label: "Real" or "Deepfake", probability: number }
         const videoResult = data.deepfake_result;
+        console.log("Video Result:", videoResult);
         const result: FactCheckResult = {
           query,
-          result: videoResult.label === "Real",
-          confidence: videoResult.probability * 100,
+          result: videoResult.label === "REAL",
+          confidence: videoResult.confidence * 100,
           type,
           source: "Deepfake Model",
           reason: "Deepfake detection", // You may expand on this if needed.
