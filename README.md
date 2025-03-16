@@ -6,6 +6,13 @@
 
 This system verifies the validity of claims passed from the frontend by analyzing related articles and matching them against the claim on various parameters. The results are displayed on the frontend, and verified claims are stored in a Neo4j knowledge graph for future reference.
 
+Additionally, the system now includes:
+
+- **Deepfake Detector**: Identifies manipulated or synthetic videos.
+- **Image Context Analyzer**: Analyzes the context of images to detect inconsistencies or misleading content.
+
+**Note:** The Image Context Analyzer requires a secret key to function, and this key is not sharable.
+
 ---
 
 ## Working
@@ -26,11 +33,13 @@ This system verifies the validity of claims passed from the frontend by analyzin
 
 ## Technologies Used
 
-- **Frontend**: Interface to input claims and display results built using NextJs.
+- **Frontend**: Interface to input claims and display results.
 - **Backend**: Flask for server-side logic.
 - **Web Scraping**: Beautiful Soup for extracting article content.
 - **Claim Matching**: Semantic similarity and other parameter checks.
-- **Database**: Neo4j for maintaining a knowledge graph.
+- **Deepfake Detection**: AI-based model for detecting synthetic/manipulated videos.
+- **Image Context Analysis**: AI-based tool for analyzing image authenticity.
+- **Database**: Neo4j (cloud-based) for maintaining a knowledge graph.
 
 ---
 
@@ -61,16 +70,12 @@ This system verifies the validity of claims passed from the frontend by analyzin
 5. Configure and start the Neo4j database (optional):
    - Download Neo4j from [[https://neo4j.com/download/](https://neo4j.com/download/)](https://neo4j.com/download/) and install it.
    - Add your `URI`, `USERNAME`, and `PASSWORD` from the Neo4j database to `config.py`.
-6. Start the frontend.
-   ```bash
-   cd kauwa-front
-   npm run dev
-   ```
+6. Run the `index.html` file on a live server.
 
-```
 ---
 
 ## Contributors
+
 - Gagan Sharma
 - Varun Gupta
 - Ronit Ranjan Tripathy
@@ -79,6 +84,9 @@ This system verifies the validity of claims passed from the frontend by analyzin
 ---
 
 ## License
+
 This project is licensed under the [MIT License](LICENSE).
+
+```
 
 ```
