@@ -33,7 +33,7 @@ Additionally, the system now includes:
 
 ## Technologies Used
 
-- **Frontend**: Interface to input claims and display results.
+- **Frontend**: Next.JS Interface to input claims and display results.
 - **Backend**: Flask for server-side logic.
 - **Web Scraping**: Beautiful Soup for extracting article content.
 - **Claim Matching**: Semantic similarity and other parameter checks.
@@ -44,10 +44,6 @@ Additionally, the system now includes:
 ---
 
 ## Setup and Installation
-
-### Pre-requisites
-
-- Neo4j (optional, if knowledge graph is not needed, skip Step 5 below).
 
 ### Steps to Run
 
@@ -67,10 +63,14 @@ Additionally, the system now includes:
    ```bash
    python app.py
    ```
-5. Configure and start the Neo4j database (optional):
-   - Download Neo4j from [[https://neo4j.com/download/](https://neo4j.com/download/)](https://neo4j.com/download/) and install it.
-   - Add your `URI`, `USERNAME`, and `PASSWORD` from the Neo4j database to `config.py`.
-6. Run the `index.html` file on a live server.
+5. Locate to Kauwa-front directory.
+   ```bash
+   cd kauwa-front
+   ```
+6. Start the front-end
+   ```bash
+   npm run dev
+   ```
 
 ---
 
