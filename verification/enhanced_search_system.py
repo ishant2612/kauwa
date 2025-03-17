@@ -3,11 +3,11 @@ from typing import Optional
 from concurrent.futures import ThreadPoolExecutor
 from googleapiclient.discovery import build
 import concurrent.futures
-import groq
+
 import requests
 from bs4 import BeautifulSoup
 import trafilatura
-
+from groq import Groq
 @dataclass
 class VerificationResult:
     is_verified: bool
@@ -15,22 +15,51 @@ class VerificationResult:
     reasoning: str
     relevant_quotes: Optional[str] = None
 
+import os
+GSE_API_KEY = "AIzaSyBo1sSLCGlB15dwofiD2CIdX0ML1vCSv0U"
+CSE_ID = "2773c54566429473a"
 class VerificationAgent:
     def __init__(
         self,
         api_key: str,
         cse_id: str,
         gse_api_key: str,
-        model: str = "llama-3.1-8b-instant"  # Best balance of performance and speed
+        model: str = "deepseek-r1-distill-llama-70b"  # Using the Deepseek model
     ):
-        self.client = groq.Groq(api_key=api_key)
+        self.api_key = api_key
         self.model = model
         self.cse_id = cse_id
         self.gse_api_key = gse_api_key
-    
+
+    def groq_chat_completion(self, messages: list, api_key: str = None) -> str:
+        """
+        Uses the Groq client to get a chat completion from the deepseek-r1-distill-llama-70b model.
+        Streams the result and returns the complete response as a string.
+        """
+        if not api_key:
+            api_key = os.environ.get("GROQ_API_KEY")
+        if not api_key:
+            raise ValueError("The GROQ_API_KEY must be provided either via the api_key parameter or environment variable.")
+        
+        # Instantiate the Groq client with the provided API key
+        client = Groq(api_key=api_key)
+        
+        completion = client.chat.completions.create(
+            model=self.model,
+            messages=messages,
+            temperature=0.6,
+            top_p=0.95,
+            stream=True,
+        )
+        
+        response = ""
+        for chunk in completion:
+            response += (chunk.choices[0].delta.content or "")
+        return response
+
     def verify(self, claim: str, source_text: str) -> VerificationResult:
         """
-        Verify if a claim is supported by source text using Groq
+        Verify if a claim is supported by source text using Groq.
         """
         prompt = f"""Analyze if this claim is fully supported by the source text.
         
@@ -53,19 +82,14 @@ CONFIDENCE: [0 to 100]
 QUOTES: [relevant quotes from source](all in single line dont use new line)
 REASONING: [your step-by-step analysis](all in single line dont use new line)
 """
+        messages = [
+            {"role": "system", "content": "You are a precise fact verification system."},
+            {"role": "user", "content": prompt}
+        ]
         
         try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": "You are a precise fact verification system."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=1,
-                max_tokens=1024
-            )
-            result = response.choices[0].message.content
-            return self._parse_response(result)
+            response_text = self.groq_chat_completion(messages, api_key=self.api_key)
+            return self._parse_response(response_text)
             
         except Exception as e:
             return VerificationResult(
@@ -175,15 +199,19 @@ REASONING: [your step-by-step analysis](all in single line dont use new line)
         print(verification_result)
         last_conf = 0
         mcr = None
+        print("verification_result",verification_result)
         for i in verification_result:
-            if(i.is_verified and i.confidence>last_conf):
+            if(i and i.confidence>=last_conf):
                 mcr = i
                 last_conf = i.confidence
+        print("mcr",mcr)
         
         return {
             'verification': {
-                'verdict': 'TRUE' if mcr and mcr.is_verified else 'FALSE',
-                'confidence': last_conf
+                'is_verfied': 'TRUE' if mcr and mcr.is_verified else 'FALSE',
+                'confidence': last_conf,
+                "reasoning": mcr.reasoning,
+                "relevant_quotes": mcr.relevant_quotes
             }
         }
 
@@ -193,34 +221,18 @@ REASONING: [your step-by-step analysis](all in single line dont use new line)
 # SAMPLE USE CASE
 
 # # Initialize agent
-# agent = VerificationAgent(api_key="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")
+# agent = VerificationAgent(api_key="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", cse_id=CSE_ID, gse_api_key=GSE_API_KEY)
 
-# # Single verification
-# result = agent.verify(
-#     claim="Modi is the president of USA",
-#     source_text="""
-# Prime Minister speaks with the President of the U.S.A.
-#  August 26, 2024
+# # # Single verification
+# # result = agent.verify(
+# #     claim="Modi is the president of USA",
+    
 
-# spacerPrime Minister Shri Narendra Modi received a telephone call today from the President of the U.S.A., H.E. Mr. Joseph R. Biden.
+# # )
 
-# 2. Prime Minister conveyed his appreciation for President Biden’s deep commitment the India-US Comprehensive Global Strategic Partnership, which is based on shared values of democracy, rule of law and strong people-to-people ties.
-
-# 3. The leaders reviewed the significant progress in bilateral relations and highlighted that India-US partnership is aimed at benefiting the people of both countries as well as the entire humanity.
-
-# 4. The two leaders had a detailed exchange of views on a number of regional and global issues.
-
-# 5. While discussing the situation in Ukraine, Prime Minister briefed President Biden on his recent visit to Ukraine. He reiterated India’s consistent position in favour of dialogue and diplomacy and expressed full support for early return of peace and stability.
-
-# 6. The two leaders expressed their shared concern over the situation in Bangladesh. They emphasised restoration of law and order and ensuring safety and security of the minorities, particularly Hindus, in Bangladesh.
-
-# 7. The two leaders reiterated their commitment to further strengthen the cooperation in multilateral fora, including the Quad.
-
-# 8. They agreed to remain in touch.
-# """
-# )
-
-# # Print results
-# print(f"Verified: {result.is_verified}")
-# print(f"Confidence: {result.confidence}%")
-# print(f"Reasoning: {result.reasoning}")
+# result = agent.process_query("Modi is the president of USA")['verification']
+# print(result)
+# print("Verified:",{result['is_verfied']})
+# print(f"Confidence: {result['confidence']}%")
+# print(f"Reasoning: {result['reasoning']}")
+# print(f"Relevant Quotes: {result['relevant_quotes']}")

@@ -53,6 +53,7 @@ export default function Dashboard() {
         }
 
         const data = await response.json();
+        console.log("Text Result:", data);
         // data.result: [boolean, confidence, reason, labels]
         let confidence = data.result[1];
         const reason = data.result[2];

@@ -15,9 +15,14 @@ import openai
 import json
 from groq import Groq
 import trafilatura
+from verification.enhanced_search_system import VerificationAgent
+
+from config import API_KEY, CSE_ID, GSE_API_KEY
 
 # Set up credentials for Google Cloud Vision
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = r"imageModel\\vision-key.json"
+
+
 
 # Load the YOLO model (ensure best.pt exists at the specified path)
 model_path = r"imageModel\\best.pt"
@@ -132,10 +137,13 @@ def process_url_and_compare(original_image_path, url):
 
 def extract_clean_content(url: str) -> str:
     """Extract clean text content from a URL."""
+    
     try:
         # Use Trafilatura for content extraction
         downloaded = trafilatura.fetch_url(url)
         content = trafilatura.extract(downloaded, include_tables=False)
+        print("------------------------------------------------------------------++++++++++++++++++++++++++++")
+        print(content)
         if not content:
             # Fallback to BeautifulSoup
             response = requests.get(url, timeout=10)
@@ -152,7 +160,9 @@ def extract_clean_content(url: str) -> str:
 from groq import Groq
 import os
 
-def groq_chat_completion(prompt: str, api_key: str = None) -> str:
+import os
+
+def groq_chat_completion(messages: list, api_key: str = None) -> str:
     """
     Uses the Groq client to get a chat completion from the deepseek-r1-distill-llama-70b model.
     Streams the result and returns the complete response as a string.
@@ -166,45 +176,12 @@ def groq_chat_completion(prompt: str, api_key: str = None) -> str:
     # Instantiate the Groq client with the provided API key
     client = Groq(api_key=api_key)
     
-    messages = [
-        {
-            "role": "system",
-            "content": """
-You are a vigilant fact-checking assistant specializing in news content analysis. Your task is to evaluate a claim extracted from an image and verify its justification using additional contextual evidence from a related web page.
-
-Input Description:
-- OCR Text: A raw, unformatted text string extracted via OCR from a news image. This text contains a claim.
-- HTML Content: A raw HTML-parsed page corresponding to the news story where the image was used.
-
-Task Objectives:
-- Extract the Claim: Identify the main claim in the OCR text.
-- Analyze Context: Review the HTML content for supporting or contradictory evidence.
-- Cross-Reference Facts: Assess if the claim is factually accurate.
-- Evaluate Justification: Determine if the claim is fully justified, partially justified, or not justified based on available evidence.
-
-Output Structure:
-Output only valid JSON (with no extra text or commentary) with the following keys:
-- "verdict": a string that is either "justified", "not justified", or "unknown".
-- "claim": the claim extracted from the OCR text.
-- "webpage": the URL of the webpage used for context.
-- "reason": a detailed explanation supporting the verdict.
-
-            """.strip()
-        },
-        {
-            "role": "user",
-            "content": prompt
-        }
-    ]
-    
     completion = client.chat.completions.create(
         model="deepseek-r1-distill-llama-70b",
         messages=messages,
         temperature=0.6,
-       
         top_p=0.95,
         stream=True,
-        
     )
     
     response = ""
@@ -212,10 +189,29 @@ Output only valid JSON (with no extra text or commentary) with the following key
         response += (chunk.choices[0].delta.content or "")
     return response
 
+def process_query(system_message: str, combined_prompt: str, api_key: str = None) -> str:
+    """
+    Constructs the message list from the given system prompt and combined user prompt,
+    then delegates to groq_chat_completion.
+    """
+    messages = [
+        {
+            "role": "system",
+            "content": system_message
+        },
+        {
+            "role": "user",
+            "content": combined_prompt
+        }
+    ]
+    
+    return groq_chat_completion(messages, api_key=api_key)
+
 def process_claim(image_path: str, url: str, api_key: str = None) -> str:
     """
-    Constructs a combined prompt using OCR text from the image and HTML content extracted from the URL,
-    then processes it through the Groq chat completion for fact-checking.
+    Extracts OCR text and HTML content, constructs a combined prompt,
+    and uses the designated system prompt for fact-checking before delegating
+    to process_query.
     """
     ocr_text = extract_text(image_path)
     html_content = extract_clean_content(url)
@@ -234,10 +230,79 @@ Please output your fact-checking analysis in valid JSON format with the followin
 - "reason": a detailed explanation supporting the verdict.
     """.strip()
     
-    # Set your API key if not already provided
+    system_message = """
+You are a vigilant fact-checking assistant specializing in news content analysis. Your task is to evaluate a claim extracted from an image and verify its justification using additional contextual evidence from a related web page.
+
+Input Description:
+- OCR Text: A raw, unformatted text string extracted via OCR from a news image. This text contains a claim.
+- HTML Content: A raw HTML-parsed page corresponding to the news story where the image was used.
+
+Task Objectives:
+- Extract the Claim: Identify the main claim in the OCR text.
+- Analyze Context: Review the HTML content for supporting or contradictory evidence.
+- Cross-Reference Facts: Assess if the claim is factually accurate.
+- Evaluate Justification: Determine if the claim is fully justified, partially justified, or not justified based on available evidence.
+
+Output Structure:
+Output only valid JSON (with no extra text or commentary) with the following keys:
+- "verdict": a string that is either "justified", "not justified", or "unknown".
+- "claim": the claim extracted from the OCR text.
+- "webpage": the URL of the webpage used for context.
+- "reason": a detailed explanation supporting the verdict.
+    """.strip()
+    
     if not api_key:
         api_key = "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"
-    return groq_chat_completion(combined_prompt, api_key=api_key)
+    return process_query(system_message, combined_prompt, api_key=api_key)
+
+def text_process_claim(image_path: str, url: str, api_key: str = None) -> str:
+    """
+    Similar to process_claim, but uses a slightly different system prompt.
+    The combined prompt remains the same.
+    """
+    ocr_text = extract_text(image_path)
+    html_content = extract_clean_content(url)
+    
+    combined_prompt = f"""
+OCR Text:
+{ocr_text}
+
+Text to validate from:
+{html_content}
+
+Please output your fact-checking analysis in valid JSON format with the following keys:
+- "verdict": a string that is either "justified", "not justified", or "unknown".
+- "claim": the claim extracted from the OCR text.
+- "webpage": the URL of the webpage used for context.
+- "reason": a detailed explanation supporting the verdict.
+    """.strip()
+    
+    system_message = """
+You are a vigilant fact-checking assistant specializing in news content analysis. Your task is to evaluate a claim extracted from an image and verify its justification using additional contextual evidence from a related web page.
+
+Input Description:
+- OCR Text: A raw, unformatted text string extracted via OCR from a news image. This text contains a claim.
+- HTML Content: A raw HTML-parsed page corresponding to the news story.
+
+Task Objectives:
+- Extract the Claim: Identify the main claim in the OCR text.
+- Analyze Context: Review the HTML content for supporting or contradictory evidence.
+- Cross-Reference Facts: Assess if the claim is factually accurate.
+- Evaluate Justification: Determine if the claim is fully justified, partially justified, or not justified based on available evidence.
+
+Output Structure:
+Output only valid JSON (with no extra text or commentary) with the following keys:
+- "verdict": a string that is either "justified", "not justified", or "unknown".
+- "claim": the claim extracted from the OCR text.
+- "webpage": the URL of the webpage used for context.
+- "reason": a detailed explanation supporting the verdict.
+    """.strip()
+    
+    if not api_key:
+        api_key = "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"
+    return process_query(system_message, combined_prompt, api_key=api_key)
+
+
 
 
 def extract_json(text: str) -> dict:
@@ -257,7 +322,51 @@ def extract_json(text: str) -> dict:
             raise ValueError(f"Error parsing JSON: {e}")
     else:
         raise ValueError("No JSON object found in text")
+def final_boss(image_reasons, text_reasons, extracted_text, api_key: str = None):
+    """
+    Aggregates the image and text-based analyses, and prompts the assistant to perform a final,
+    integrated fact-checking analysis.
+    
+    Parameters:
+    - image_reasons: Detailed analysis reasons from image-based searches.
+    - text_reasons: Detailed analysis reasons from text-based searches.
+    - extracted_text: The OCR-extracted claim from the image.
+    - api_key: API key for the Groq client (uses default if not provided).
+    
+    Returns:
+    - The final analysis as processed by process_query.
+    """
+    combined_prompt = f"""
+Claim Extracted from the Image:
+{extracted_text}
 
+Aggregated Evidence from Searches:
+Image-Based Analysis Reasons:
+{image_reasons}
+
+Text-Based Analysis Reasons:
+{text_reasons}
+
+Using the above evidence, evaluate whether the claim is justified. Provide your analysis in valid JSON format with the following keys:
+- "verdict": "justified", "not justified", or "unknown"
+- "claim": the extracted claim from the OCR text
+- "reason": a detailed explanation supporting your conclusion
+    """.strip()
+    
+    system_message = """
+You are an expert, multifaceted fact-checking assistant specializing in news analysis who is going to make the final decision on whether or not news is true on based of previous analysis performed before you. Your role is to integrate evidence from both image-based and text-based search results to determine the overall validity of a claim extracted from an image.
+    
+Input Details:
+- The extracted claim from the image.
+- Detailed analysis results from candidate searches based on both image and text.
+    
+Your task is to cross-reference and analyze the provided evidence objectively, and then deliver your final assessment in valid JSON format according to the output structure specified.
+    """.strip()
+    
+    if not api_key:
+        api_key = "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"
+    
+    return process_query(system_message, combined_prompt, api_key=api_key)
 
 # Main execution
 # if __name__ == "__main__":
@@ -340,6 +449,10 @@ import numpy as np
 def predict(image_path):
     result_data = {}
     
+    # 1. Initialization
+    image_reasons = []  # List to store detailed reasons from image-based analysis
+    text_reasons = []   # List to store detailed reasons from text-based analysis
+    
     # Extract OCR text from the original image.
     extracted_text = extract_text(image_path)
     result_data["Extracted OCR Text"] = extracted_text
@@ -348,24 +461,26 @@ def predict(image_path):
     cropped_paths = crop_image(image_path)
     result_data["Cropped image paths"] = cropped_paths
     
+    # 2. Process image-based analysis
     if cropped_paths:
         first_cropped = cropped_paths[0]
         
         # Detect web URLs using the cropped image.
-        urls = detect_web(first_cropped)
-        result_data["Detected URLs"] = urls
+        detected_urls = detect_web(first_cropped)
+        result_data["Detected URLs from cropped image"] = detected_urls
         
         # Compute similarity scores for each URL.
-        candidates = [(url, float(sim) if isinstance(sim, np.float32) else sim) for url, sim in [process_url_and_compare(first_cropped, url) for url in urls]]
+        # Each candidate is a tuple of (url, similarity_score)
+        candidates = [
+            (url, float(sim) if isinstance(sim, np.float32) else sim)
+            for url, sim in [process_url_and_compare(first_cropped, url) for url in detected_urls]
+        ]
         result_data["Similarity scores"] = candidates
         
-        final_result = None
-        api_key = "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"  # or use environment variable
-        
         # Iterate over each candidate.
+        api_key = "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"  # or use environment variable
         for candidate in candidates:
             url_candidate, sim_score = candidate
-            # Process only candidates with valid URL and similarity >= 70%.
             if url_candidate and sim_score is not None and sim_score >= 0.70:
                 raw_response = process_claim(image_path, url_candidate, api_key=api_key)
                 
@@ -373,25 +488,74 @@ def predict(image_path):
                 try:
                     response_json = extract_json(raw_response)
                 except Exception as e:
-                    result_data["Error extracting JSON"] = str(e)
-                    continue  # Skip this candidate if extraction fails
+                    image_reasons.append({
+                        "url": url_candidate,
+                        "error": f"Error extracting JSON: {str(e)}"
+                    })
+                    continue
                 
                 verdict = response_json.get("verdict", "").lower()
-                result_data["Parsed Verdict"] = verdict
+                reason_detail = response_json.get("reason", "No detailed reason provided")
                 
-                # Early termination if verdict is "justified" or "supported"
+                image_reasons.append({
+                    "url": url_candidate,
+                    "verdict": verdict,
+                    "reason": reason_detail
+                })
+                
+                # Early termination if verdict is clearly justified
                 if verdict in ["justified", "supported"]:
-                    final_result = response_json
-                    result_data["Final Verdict"] = "The claim is supported (justified)."
-                    result_data["Claim"] = final_result.get("claim")
-                    result_data["Webpage"] = final_result.get("webpage")
-                    result_data["Reason"] = final_result.get("reason")
-                    return json.dumps(result_data, indent=4)
-        
-        if not final_result:
-            result_data["Final Verdict"] = "The claim is not supported (not justified) by the available sources."
-            
+                    result_data["Final Verdict (Image)"] = "The claim is supported (justified) based on image analysis."
+                    result_data["Image Analysis Detail"] = response_json
+                    # Optionally, you might break out of the loop here if you only want one successful candidate.
+                    break
     else:
-        result_data["Error"] = "No cropped images available for further processing."
+        result_data["Error"] = "No cropped images available for image-based processing."
     
+    # 3. Process text-based analysis (using Google search on the extracted OCR text)
+    text_urls = []
+    if extracted_text:
+        agent = VerificationAgent(api_key=API_KEY, cse_id=CSE_ID, gse_api_key=GSE_API_KEY)
+        text_urls = agent.google_search(extracted_text)
+        result_data["Text-based URLs from Google Search"] = text_urls
+
+        for url_candidate in text_urls:
+            raw_response = text_process_claim(image_path, url_candidate, api_key=api_key)
+            
+            try:
+                response_json = extract_json(raw_response)
+            except Exception as e:
+                text_reasons.append({
+                    "url": url_candidate,
+                    "error": f"Error extracting JSON: {str(e)}"
+                })
+                continue
+            
+            verdict = response_json.get("verdict", "").lower()
+            reason_detail = response_json.get("reason", "No detailed reason provided")
+            
+            text_reasons.append({
+                "url": url_candidate,
+                "verdict": verdict,
+                "reason": reason_detail
+            })
+            
+            # Early termination if verdict is clearly justified.
+            if verdict in ["justified", "supported"]:
+                result_data["Final Verdict (Text)"] = "The claim is supported (justified) based on text search."
+                result_data["Text Analysis Detail"] = response_json
+                # Optionally break here if one justified result is enough.
+                break
+
+    # Store the collected reasons in the result_data.
+    result_data["Image Reasons"] = image_reasons
+    result_data["Text Reasons"] = text_reasons
+    print("Image Reasons:", image_reasons)
+    print("Text Reasons:", text_reasons)
+    # 4. Call final_boss to perform the multifaceted analysis based on both reason lists.
+    final_analysis = final_boss(image_reasons, text_reasons, extracted_text)
+    result_data["Final Analysis"] = final_analysis
+    print("Final Analysis:", final_analysis)
     return json.dumps(result_data, indent=4)
+# result_data = predict(r"test 3.jpg")
+# print(result_data)
