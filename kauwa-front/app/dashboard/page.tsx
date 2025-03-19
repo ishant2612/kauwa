@@ -51,7 +51,7 @@ export default function Dashboard() {
         if (!response.ok) {
           throw new Error("Failed to fetch data from the API");
         }
-
+        console.log("Response:", response);
         const data = await response.json();
         console.log("Text Result:", data);
         // data.result: [boolean, confidence, reason, labels]

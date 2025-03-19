@@ -205,6 +205,7 @@ neo4j_connected = False
 def initialize_kg_manager():
     """Lazy initialization of the KnowledgeGraphManager."""
     global kg_manager, neo4j_connected
+    print("inside kg_manager")
     try:
         kg_manager = KnowledgeGraphManager(uri=URI, username=USERNAME, password=PASSWORD)
         neo4j_connected = True
@@ -335,7 +336,7 @@ def process_input():
         result = predict_video(video_path)
         if os.path.exists(video_path):
             os.remove(video_path)
-        print("Resutl of deepfake", result)
+        print("Result of deepfake", result)
         return jsonify({"deepfake_result": result})
     
     if "image" in request.files:
@@ -352,7 +353,9 @@ def process_input():
     
     # Otherwise, expect a JSON payload for text verification.
     data = request.get_json()
+    print("Data received", data)
     if data and "query" in data:
+        print("Inside text verification block")
         query = data["query"]
         if not query:
             return jsonify({"error": "Query not provided"}), 400
@@ -363,6 +366,7 @@ def process_input():
         
         try:
             result = kg_manager.verify_query(query)
+            print("Result of text verification", result)
             return jsonify({"result": result, "neo4j_connected": neo4j_connected})
         except Exception as e:
             return jsonify({"error": str(e)}), 500
@@ -386,4 +390,4 @@ def health_check():
 # ------------------------------
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    app.run(debug=False, host='0.0.0.0', port=port)
+    app.run(debug=True, host='0.0.0.0', port=port)

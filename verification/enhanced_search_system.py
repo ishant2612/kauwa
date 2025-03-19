@@ -196,15 +196,15 @@ REASONING: [your step-by-step analysis](all in single line dont use new line)
         
         # Verify the claim
         verification_result = self.batch_verify(query, sources)
-        print(verification_result)
+        # print(verification_result)
         last_conf = 0
         mcr = None
-        print("verification_result",verification_result)
+        # print("verification_result",verification_result)
         for i in verification_result:
             if(i and i.confidence>=last_conf):
                 mcr = i
                 last_conf = i.confidence
-        print("mcr",mcr)
+        # print("mcr",mcr)
         
         return {
             'verification': {
@@ -224,11 +224,11 @@ REASONING: [your step-by-step analysis](all in single line dont use new line)
 # agent = VerificationAgent(api_key="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", cse_id=CSE_ID, gse_api_key=GSE_API_KEY)
 
 # # # Single verification
-# # result = agent.verify(
-# #     claim="Modi is the president of USA",
+# result = agent.verify(
+    # claim="Modi is the president of USA",
     
 
-# # )
+# )
 
 # result = agent.process_query("Modi is the president of USA")['verification']
 # print(result)
