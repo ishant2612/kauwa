@@ -116,7 +116,7 @@ class KnowledgeGraphManager:
             label = labels[0]
         else:
             # Default label if no labels found
-            label = "Knowledge Graph"
+            label = "General"
 
         with self.driver.session() as session:
             try:
@@ -130,7 +130,7 @@ class KnowledgeGraphManager:
         if self.driver:
             existing_truth = self.get_query_truth_value(query)
             if existing_truth is not None:
-                return existing_truth, 1.0, "Retrieved from knowledge graph", []
+                return existing_truth, 1.0, "Retrieved from knowledge graph", "", "Knowlede Graph"
 
         verification_result = self.verification_system.process_query(query)["verification"]
         print("Verification Result: ", verification_result)

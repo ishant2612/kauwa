@@ -254,7 +254,7 @@ export default function Dashboard() {
                 result={currentOutput.result}
                 confidence={currentOutput.confidence}
                 type={currentOutput.type}
-                sourceLink={currentOutput.source}
+                // sourceLink={currentOutput.source}
                 reason={currentOutput.reason}
                 contentVerification={currentOutput.contentVerification}
                 deepfakeDetection={currentOutput.deepfakeDetection}
