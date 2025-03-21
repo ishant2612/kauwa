@@ -557,5 +557,5 @@ def predict(image_path):
     result_data["Final Analysis"] = final_analysis
     print("Final Analysis:", final_analysis)
     return json.dumps(result_data, indent=4)
-result_data = predict(r"test 3.jpg")
-print(result_data)
+# result_data = predict(r"test 3.jpg")
+# print(result_data)

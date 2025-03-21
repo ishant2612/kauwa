@@ -57,7 +57,7 @@ export default function Dashboard() {
         // data.result: [boolean, confidence, reason, labels]
         let confidence = data.result[1];
         const reason = data.result[2];
-
+        // const label = data.result[4];
         if (reason === "Retrieved from knowledge graph") {
           confidence = 100;
         }
@@ -66,7 +66,7 @@ export default function Dashboard() {
           query,
           result: data.result[0],
           confidence,
-          source: "https://example.com/fact-check",
+          // source: "https://example.com/fact-check",
           reason,
           type,
         };
@@ -74,7 +74,7 @@ export default function Dashboard() {
         setCurrentOutput(result);
         setPreviousOutputs((prev) => [result, ...prev.slice(0, 4)]);
 
-        const newTag = data.result[3][0];
+        const newTag = data.result[4];
         setBarData((prev) => {
           const existingTag = prev.find((item) => item.tag === newTag);
           if (existingTag) {
@@ -287,6 +287,19 @@ export default function Dashboard() {
                       margin={{ top: 20, right: 20, bottom: 50, left: 50 }}
                       padding={0.3}
                       colors={{ scheme: "set2" }}
+                      labelTextColor={"black"}
+                      theme={{
+                        axis: {
+                          ticks: {
+                            text: {
+                              fill: "#cdcdcd", // Change axis label color to white or any visible color
+                              fontSize: 12,
+                              fontWeight: "bold",
+                              textTransform: "uppercase",
+                            },
+                          },
+                        },
+                      }}
                     />
                   </div>
                 </CardContent>

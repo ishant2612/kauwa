@@ -14,6 +14,7 @@ class VerificationResult:
     confidence: float
     reasoning: str
     relevant_quotes: Optional[str] = None
+    label: Optional[str] = None
 
 import os
 GSE_API_KEY = "AIzaSyBo1sSLCGlB15dwofiD2CIdX0ML1vCSv0U"
@@ -75,12 +76,13 @@ Instructions:
 4. Determine if the source provides sufficient information
 5. Determine if the fact listed in the claim is a historical event
 6. Give true if the claim is partially or fully supported by the source text, otherwise give false
-
+7. Give the label for the query like sports , politics ,tech etc
 Provide output in this format:
 VERIFIED: [true/false]  (based on the reasoning)
 CONFIDENCE: [0 to 100]
 QUOTES: [relevant quotes from source](all in single line dont use new line)
 REASONING: [your step-by-step analysis](all in single line dont use new line)
+LABEL: [label of the query]
 """
         messages = [
             {"role": "system", "content": "You are a precise fact verification system."},
@@ -89,6 +91,7 @@ REASONING: [your step-by-step analysis](all in single line dont use new line)
         
         try:
             response_text = self.groq_chat_completion(messages, api_key=self.api_key)
+            # print("asdfasdfasdfasdfasdfasdf"   ,response_text)
             return self._parse_response(response_text)
             
         except Exception as e:
@@ -96,7 +99,8 @@ REASONING: [your step-by-step analysis](all in single line dont use new line)
                 is_verified=False,
                 confidence=0.0,
                 reasoning=f"Error during verification: {str(e)}",
-                relevant_quotes=None
+                relevant_quotes=None,
+                label = None
             )
     
     def _parse_response(self, response: str) -> VerificationResult:
@@ -109,7 +113,7 @@ REASONING: [your step-by-step analysis](all in single line dont use new line)
             confidence = 0.0
             quotes = None
             reasoning = ""
-            
+            label = None
             for line in lines:
                 if line.startswith('VERIFIED:'):
                     verified = 'true' in line.lower()
@@ -119,12 +123,15 @@ REASONING: [your step-by-step analysis](all in single line dont use new line)
                     quotes = line.split(':')[1].strip()
                 elif line.startswith('REASONING:'):
                     reasoning = line.split(':')[1].strip()
+                elif line.startswith('LABEL:'):
+                    label = line.split(':')[1].strip()
             
             return VerificationResult(
                 is_verified=verified,
                 confidence=confidence,
                 reasoning=reasoning,
                 relevant_quotes=quotes
+                ,label = label
             )
         except:
             return VerificationResult(
@@ -132,6 +139,7 @@ REASONING: [your step-by-step analysis](all in single line dont use new line)
                 confidence=0.0,
                 reasoning="Failed to parse verification response",
                 relevant_quotes=None
+                ,label = None
             )
 
     def batch_verify(self, claim: str, sources: list[str], batch_size: int = 5) -> list[VerificationResult]:
@@ -212,6 +220,7 @@ REASONING: [your step-by-step analysis](all in single line dont use new line)
                 'confidence': last_conf,
                 "reasoning": mcr.reasoning,
                 "relevant_quotes": mcr.relevant_quotes
+                ,"label": mcr.label
             }
         }
 
@@ -230,7 +239,7 @@ REASONING: [your step-by-step analysis](all in single line dont use new line)
 
 # )
 
-# result = agent.process_query("Modi is the president of USA")['verification']
+# result = agent.process_query("Roanldo is a cricket player")['verification']
 # print(result)
 # print("Verified:",{result['is_verfied']})
 # print(f"Confidence: {result['confidence']}%")
