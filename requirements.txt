@@ -12,3 +12,9 @@ Flask
 flask-cors
 groq
 gunicorn
+opencv-python==4.11.0.86
+tensorflow==2.18.0
+pillow
+google-cloud-vision
+openai
+mtcnn

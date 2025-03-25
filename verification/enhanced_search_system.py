@@ -3,6 +3,7 @@ from typing import Optional
 from concurrent.futures import ThreadPoolExecutor
 from googleapiclient.discovery import build
 import concurrent.futures
+import re
 
 import requests
 from bs4 import BeautifulSoup
@@ -177,11 +178,63 @@ LABEL: [label of the query]
         except Exception as e:
             print(f"Error extracting content from {url}: {e}")
             return ""
+    
+
+    def extract_index(self,response: str) -> str:
+        match = re.search(r"</think>\s*(\d+)", response)
+        return match.group(1) if match else ""
+
+    def get_best_false_mcr(self, verification_results: list[VerificationResult]) -> VerificationResult:
+        prompt = """You are an AI designed to evaluate multiple failed verification attempts and select the most reliable failure explanation. You will be given five VerificationResult objects where all have is_verified=False. Your task is to choose the best one based on its reasoning, confidence, and relevant features, while avoiding results that contain error messages as source text.
+
+        Here are the five VerificationResult objects:
+        {verification_results}
+
+        Selection Criteria:
+        Reasoning Quality: Select the result with the clearest, most detailed, and well-explained reasoning.
+
+        Avoid Error Messages: If the source text is an error message, discard that result and choose another with a better explanation.
+
+        Confidence Score: Prefer results with higher confidence values, indicating stronger certainty in the failure explanation.
+
+        Relevant Quotes: If applicable, prefer results that provide supporting quotes from sources.
+
+
+        Output Format:
+        Respond with your chosen VerificationResult index in the exact format below:
+        Provide output in this format (the output should be a single integer(index of the choosen one), no text or additional characters)(PLease dont halluciante):
+        (A single integer between 0 and 4, ensuring a valid selection is always provided.)"""
+
+        messages = [
+            {"role": "system", "content": "You are a precise fact verification system."},
+            {"role": "user", "content": prompt}
+        ]
+        #print("IDHR AYA------------------------------------------------------")
+        #print(messages)
+        try:
+            response_text = self.groq_chat_completion(messages, api_key=self.api_key)
+            print("verification_results",verification_results)
+            print("response_text",response_text)
+            index = self.extract_index(response_text)
+            print("index",index)
+            res = verification_results[int(index)]
+            #res = self._parse_response(response_text)
+            #print("res",res)
+            return res
+        except Exception as e:
+            return VerificationResult(
+                is_verified=False,
+                confidence=0.0,
+                reasoning=f"Error during verification: {str(e)}",
+                relevant_quotes=None,
+                label=None
+            )
 
     def process_query(self, query: str, num_results: int = 5) -> dict:
         """Perform query processing: search, extract, and verify."""
         # Perform Google search
         search_results = self.google_search(query, num_results)
+        #print("search_results : ",search_results)
         if not search_results:
             return {'error': 'No results found'}
         
@@ -207,18 +260,22 @@ LABEL: [label of the query]
         # print(verification_result)
         last_conf = 0
         mcr = None
-        # print("verification_result",verification_result)
+        #print("verification_result",verification_result)
         for i in verification_result:
-            if(i and i.confidence>=last_conf):
+            if(i.is_verified == True and i.confidence>=last_conf):
                 mcr = i
                 last_conf = i.confidence
         # print("mcr",mcr)
-        
+        if(mcr == None):
+            # If all the results are verified as false then return best false result using AI agent (final boss)
+            mcr = self.get_best_false_mcr(verification_result)
+        # get updated false mcr final boss in case of all false
+        print("mcr",mcr)
         return {
             'verification': {
                 'is_verfied': 'TRUE' if mcr and mcr.is_verified else 'FALSE',
-                'confidence': last_conf,
-                "reasoning": mcr.reasoning,
+                'confidence': mcr.confidence,
+                "reasoning": mcr.reasoning ,
                 "relevant_quotes": mcr.relevant_quotes
                 ,"label": mcr.label
             }
