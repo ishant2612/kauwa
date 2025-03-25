@@ -16,6 +16,7 @@ class VerificationResult:
     reasoning: str
     relevant_quotes: Optional[str] = None
     label: Optional[str] = None
+    source_url: Optional[str] = None
 
 import os
 GSE_API_KEY = "AIzaSyBo1sSLCGlB15dwofiD2CIdX0ML1vCSv0U"
@@ -213,8 +214,8 @@ LABEL: [label of the query]
         #print(messages)
         try:
             response_text = self.groq_chat_completion(messages, api_key=self.api_key)
-            print("verification_results",verification_results)
-            print("response_text",response_text)
+            #print("verification_results",verification_results)
+            #print("response_text",response_text)
             index = self.extract_index(response_text)
             print("index",index)
             res = verification_results[int(index)]
@@ -234,52 +235,70 @@ LABEL: [label of the query]
         """Perform query processing: search, extract, and verify."""
         # Perform Google search
         search_results = self.google_search(query, num_results)
-        #print("search_results : ",search_results)
         if not search_results:
             return {'error': 'No results found'}
         
         # Extract content in parallel
+        sources = []
+        url_mapping = {}  # Store URL corresponding to each source
         with ThreadPoolExecutor(max_workers=5) as executor:
-            future_to_url = {
+            future_to_item = {
                 executor.submit(self.extract_clean_content, item['link']): item
                 for item in search_results
             }
             
-            sources = []
-            for future in concurrent.futures.as_completed(future_to_url):
-                result = future_to_url[future]
+            for future in concurrent.futures.as_completed(future_to_item):
+                item = future_to_item[future]
                 try:
                     content = future.result()
                     if content:
                         sources.append(content)
+                        url_mapping[content] = item['link']  # Store the URL
                 except Exception as e:
-                    print(f"Error processing {result['link']}: {e}")
+                    print(f"Error processing {item['link']}: {e}")
         
         # Verify the claim
-        verification_result = self.batch_verify(query, sources)
-        # print(verification_result)
+        verification_results = self.batch_verify(query, sources)
+        
+        # Attach corresponding URLs
+        #print("URL MAPPINGS: ",url_mapping)
+        for result, source in zip(verification_results, sources):
+            result.source_url = url_mapping.get(source, "Unknown")
+            #print("SOURCE URL: ",result)
+
+        #print("VERIFICATION RESULTS: ",verification_results)
+
         last_conf = 0
         mcr = None
-        #print("verification_result",verification_result)
-        for i in verification_result:
-            if(i.is_verified == True and i.confidence>=last_conf):
-                mcr = i
-                last_conf = i.confidence
-        # print("mcr",mcr)
-        if(mcr == None):
-            # If all the results are verified as false then return best false result using AI agent (final boss)
-            mcr = self.get_best_false_mcr(verification_result)
-        # get updated false mcr final boss in case of all false
-        print("mcr",mcr)
+
+        # Select the best verification result
+        for result in verification_results:
+            if result.is_verified and result.confidence >= last_conf:
+                mcr = result
+                last_conf = result.confidence
+
+        # If all results are false, use the best false one
+        if not mcr:
+            mcr = self.get_best_false_mcr(verification_results)
+
+        print("MCR: ",mcr)
+
+        # Format results
         return {
             'verification': {
-                'is_verfied': 'TRUE' if mcr and mcr.is_verified else 'FALSE',
+                'is_verified': 'TRUE' if mcr and mcr.is_verified else 'FALSE',
                 'confidence': mcr.confidence,
-                "reasoning": mcr.reasoning ,
-                "relevant_quotes": mcr.relevant_quotes
-                ,"label": mcr.label
-            }
+                "reasoning": mcr.reasoning,
+                "relevant_quotes": mcr.relevant_quotes,
+                "label": mcr.label,
+                "source_link": mcr.source_url if mcr else "Unknown"
+            },
+            'all_sources': [
+                {"url": result.source_url, "confidence": result.confidence, "is_verified": result.is_verified}
+                for result in verification_results
+            ]
         }
+
 
 
 

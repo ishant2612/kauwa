@@ -131,20 +131,27 @@ class KnowledgeGraphManager:
             existing_truth = self.get_query_truth_value(query)
             if existing_truth is not None:
                 return existing_truth, 1.0, "Retrieved from knowledge graph", "", "Knowlede Graph"
-
-        verification_result = self.verification_system.process_query(query)["verification"]
-        print("Verification Result: ", verification_result)
-        boolean_result = verification_result['is_verfied'] == 'TRUE'
+        #print("before processing query")
+        result = self.verification_system.process_query(query)
+        #print("result",result,result.keys())
+        verification_result = result["verification"]
+        all_sources = result["all_sources"]
+        
+        #print("after processing query Verification Result: ", verification_result, type(verification_result),verification_result.keys())
+        boolean_result = verification_result['is_verified'] == 'TRUE'
+        #print("after processing query")
         confidence = float(verification_result['confidence'])
         reason = verification_result["reasoning"]
         quotes = verification_result["relevant_quotes"]
+        
         labels = verification_result["label"]
+        source_link = verification_result["source_link"]
         # print(boolean_result, confidence, reason, quotes, labels)
-
+        
         if self.driver and boolean_result:
             self.add_query_to_graph(query, verification_result)
 
-        return boolean_result, confidence, reason, quotes, labels
+        return boolean_result, confidence, reason, quotes, labels, source_link , all_sources
 
 
 def main():

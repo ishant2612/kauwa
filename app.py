@@ -2,6 +2,7 @@
 
 
 from flask import Flask, request, jsonify
+import json
 from flask_cors import CORS
 import os
 import cv2
@@ -191,12 +192,13 @@ def process_input():
         # Initialize the KnowledgeGraphManager if not done already.
         if kg_manager is None:
             initialize_kg_manager()
-        
+        print("Query received", query)
         try:
             result = kg_manager.verify_query(query)
-            print("Result of text verification", result)
+            print("Result of text verification", json.dumps(result, indent=4))
             return jsonify({"result": result, "neo4j_connected": neo4j_connected})
         except Exception as e:
+            print("Shouldn't reach here")
             return jsonify({"error": str(e)}), 500
 
     return jsonify({
