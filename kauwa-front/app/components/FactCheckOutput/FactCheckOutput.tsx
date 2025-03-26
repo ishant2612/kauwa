@@ -1,5 +1,3 @@
-
-
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,17 +12,18 @@ interface FactCheckResult {
   type: "text" | "video" | "image";
   contentVerification?: boolean;
   deepfakeDetection?: boolean;
+  sourceLink?: string;
 }
 
 interface FactCheckOutputProps {
   output: FactCheckResult | null;
   isProcessing: boolean;
 }
-
 export default function FactCheckOutput({
   output,
   isProcessing,
 }: FactCheckOutputProps) {
+  console.log("outputtttt", output);
   return (
     <Card className="w-full h-full flex flex-col">
       <CardHeader>
@@ -73,6 +72,7 @@ export default function FactCheckOutput({
                   result={output.contentVerification}
                   trueText="True Content"
                   falseText="False Content"
+                  sourceLink={output.sourceLink}
                 />
               ) : (
                 <ResultItem
@@ -108,9 +108,16 @@ interface ResultItemProps {
   result: boolean | undefined;
   trueText: string;
   falseText: string;
+  sourceLink?: string;
 }
 
-function ResultItem({ title, result, trueText, falseText }: ResultItemProps) {
+function ResultItem({
+  title,
+  result,
+  trueText,
+  falseText,
+  sourceLink,
+}: ResultItemProps) {
   return (
     <div>
       <h3 className="font-semibold text-lg mb-1">{title}:</h3>
@@ -128,6 +135,16 @@ function ResultItem({ title, result, trueText, falseText }: ResultItemProps) {
           {result ? trueText : falseText}
         </span>
       </div>
+      {sourceLink && (
+        <a
+          href={sourceLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-500 underline mt-2 block"
+        >
+          Source
+        </a>
+      )}
     </div>
   );
 }

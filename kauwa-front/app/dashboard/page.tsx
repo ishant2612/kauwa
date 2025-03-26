@@ -16,7 +16,7 @@ interface FactCheckResult {
   result: boolean;
   confidence: number;
   type: "text" | "video" | "image";
-  source?: string;
+  sourceLink?: string;
   reason?: string;
   contentVerification?: boolean;
   deepfakeDetection?: boolean;
@@ -66,7 +66,7 @@ export default function Dashboard() {
           query,
           result: data.result[0],
           confidence,
-          // source: "https://example.com/fact-check",
+          sourceLink: data.result[5],
           reason,
           type,
         };
@@ -144,7 +144,7 @@ export default function Dashboard() {
           result: contentVerified,
           confidence: avgScore,
           type,
-          source: "Image Analysis Model",
+          sourceLink: "Image Analysis Model",
           reason: imageResult["Final Verdict"],
           contentVerification: contentVerified,
         };
@@ -196,7 +196,7 @@ export default function Dashboard() {
           result: videoResult.label === "REAL",
           confidence: videoResult.confidence * 100,
           type,
-          source: "Deepfake Model",
+          sourceLink: "Deepfake Model",
           reason: "Deepfake detection", // You may expand on this if needed.
         };
 
@@ -209,7 +209,7 @@ export default function Dashboard() {
 
     setIsProcessing(false);
   };
-
+  console.log("currentOutput:", currentOutput);
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Navbar />
@@ -254,7 +254,7 @@ export default function Dashboard() {
                 result={currentOutput.result}
                 confidence={currentOutput.confidence}
                 type={currentOutput.type}
-                // sourceLink={currentOutput.source}
+                sourceLink={currentOutput.sourceLink}
                 reason={currentOutput.reason}
                 contentVerification={currentOutput.contentVerification}
                 deepfakeDetection={currentOutput.deepfakeDetection}

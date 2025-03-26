@@ -1,4 +1,3 @@
-
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,6 +17,7 @@ interface DynamicStatsProps {
   result: boolean;
   confidence: number;
   type: "text" | "video" | "image";
+  sourceLink: string;
   reason?: string;
   contentVerification?: boolean;
   deepfakeDetection?: boolean;
@@ -28,6 +28,7 @@ export default function DynamicStats({
   confidence,
   type,
   reason,
+  sourceLink,
   contentVerification,
   deepfakeDetection,
 }: DynamicStatsProps) {
@@ -37,6 +38,7 @@ export default function DynamicStats({
       value: getValue(
         type,
         result,
+
         contentVerification,
         deepfakeDetection,
         reason
@@ -54,8 +56,8 @@ export default function DynamicStats({
       icon: <TrendingUp className="w-4 h-4 text-purple-500" />,
     },
     {
-      title: getStrengthTitle(type),
-      value: getStrength(confidence),
+      title: getSourceTitle(type),
+      value: getLink(sourceLink, type),
       icon: <TrendingUp className="w-4 h-4 text-yellow-500" />,
     },
   ];
@@ -70,7 +72,7 @@ export default function DynamicStats({
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.1 }}
           >
-            <Card className="flex flex-col h-full">
+            <Card className="flex flex-col h-full text-wrap">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
                   {stat.title}
@@ -181,23 +183,35 @@ function getInputTypeIcon(type: string) {
   }
 }
 
-function getStrengthTitle(type: string): string {
+function getSourceTitle(type: string): string {
   switch (type) {
     case "video":
-      return "Detection Strength";
+      return "Deepfake Detection Model";
     case "image":
-      return "Analysis Strength";
+      return "Image Analysis Model";
     default:
-      return "Fact Check Strength";
+      return "Source Link";
   }
 }
 
-function getStrength(confidence: number): string {
-  if (confidence >= 90) return "Very Strong";
-  if (confidence >= 70) return "Strong";
-  if (confidence >= 50) return "Moderate";
-  if (confidence >= 30) return "Weak";
-  return "Very Weak";
+function getLink(sourceLink: string, type: string): JSX.Element | string {
+  switch (type) {
+    case "video":
+      return "Deepfake Detection Model";
+    case "image":
+      return "Image Analysis Model";
+    default:
+      return (
+        <a
+          href={sourceLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-white-500 underline text-xs text-wrap"
+        >
+          {sourceLink}
+        </a>
+      );
+  }
 }
 
 function getConfidenceColor(confidence: number): string {
