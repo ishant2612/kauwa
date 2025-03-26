@@ -19,8 +19,8 @@ class VerificationResult:
     source_url: Optional[str] = None
 
 import os
-GSE_API_KEY = "AIzaSyBo1sSLCGlB15dwofiD2CIdX0ML1vCSv0U"
-CSE_ID = "2773c54566429473a"
+GSE_API_KEY = "AIzaSyCGXItNdfzorYgMqdC-WOndRi4LeLzyrvU"
+CSE_ID = "c624198a099f14b83"
 class VerificationAgent:
     def __init__(
         self,
