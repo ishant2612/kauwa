@@ -22,7 +22,7 @@ from datetime import datetime, date, time, timedelta
 from config import API_KEY, CSE_ID, GSE_API_KEY
 
 # Set up credentials for Google Cloud Vision
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = r"vision-key.json"
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = r"imageModel\\vision-key.json"
 
 
 
@@ -164,8 +164,8 @@ def extract_clean_content(url: str) -> str:
         # Use Trafilatura for content extraction
         downloaded = trafilatura.fetch_url(url)
         content = trafilatura.extract(downloaded, include_tables=False)
-        print("------------------------------------------------------------------++++++++++++++++++++++++++++")
-        print(content)
+        # print("------------------------------------------------------------------++++++++++++++++++++++++++++")
+        # print(content)
         if not content:
             # Fallback to BeautifulSoup
             response = requests.get(url, timeout=10)
@@ -236,11 +236,11 @@ def process_claim(image_path: str, url: str, api_key: str = None) -> str:
     to process_query.
     """
     now = datetime.now()
-    print("Now:", now)
+    # print("Now:", now)
 
     # Current date only
     today = date.today()
-    print("Today:", today)
+    # print("Today:", today)
     ocr_text = extract_text(image_path)
     html_content = extract_clean_content(url)
     
@@ -372,11 +372,11 @@ def final_boss(image_context, text_reasons, extracted_text, api_key: str = None)
     - The final analysis as processed by process_query.
     """
     now = datetime.now()
-    print("Now:", now)
+    # print("Now:", now)
 
     # Current date only
     today = date.today()
-    print("Today:", today)
+    # print("Today:", today)
     combined_prompt = f"""
 Claim Extracted from the Image:
 {extracted_text}
@@ -588,7 +588,7 @@ def predict(image_path):
         # Detect web URLs using the cropped image.
         detected_urls = detect_web(first_cropped)[:5]
         result_data["Detected URLs from cropped image"] = detected_urls
-        print(result_data)
+        # print(result_data)
         # Compute similarity scores for each URL.
         # Each candidate is a tuple of (url, similarity_score)
         candidates = [
@@ -673,12 +673,12 @@ def predict(image_path):
     # Store the collected reasons in the result_data.
     result_data["Image context"] = image_context
     result_data["Text Reason"] = text_result
-    print("Image context:", image_context)
-    print("Text Reasons:", text_reasons)
+    # print("Image context:", image_context)
+    # print("Text Reasons:", text_reasons)
     # 4. Call final_boss to perform the multifaceted analysis based on both reason lists.
     final_analysis = final_boss(image_context, text_reasons, extracted_text)
     result_data["Final Analysis"] = final_analysis
-    print("Final Analysis:", final_analysis)
+    # print("Final Analysis:", final_analysis)
     return json.dumps(result_data, indent=4)
-result_data = predict(r"train.jpg")
-print(result_data)
+# result_data = predict(r"train.jpg")
+# print("result data ->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>",result_data)
