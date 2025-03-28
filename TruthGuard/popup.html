@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>NewsVerify - Fact Checker</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        body {
+            width: 500px;
+            padding: 15px;
+            background-color: #f4f4f4;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto">
+        <h1 class="text-3xl font-bold text-center mb-6 text-blue-600">NewsVerify</h1>
+        
+        <div class="bg-white shadow-md rounded-lg p-6 mb-4">
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="textInput">
+                    Paste Text to Verify
+                </label>
+                <textarea 
+                    id="textInput" 
+                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
+                    rows="4" 
+                    placeholder="Enter text to verify..."
+                ></textarea>
+                <button 
+                    id="verifyTextBtn" 
+                    class="mt-2 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+                >
+                    Verify Text
+                </button>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="imageUrlInput">
+                    Paste Image URL to Verify
+                </label>
+                <input 
+                    type="text" 
+                    id="imageUrlInput" 
+                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
+                    placeholder="Enter image URL..."
+                />
+                <button 
+                    id="verifyImageBtn" 
+                    class="mt-2 bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+                >
+                    Verify Image
+                </button>
+            </div>
+        </div>
+
+        <div id="resultContainer" class="bg-white shadow-md rounded-lg p-6">
+            <h3 class="text-xl font-semibold mb-4 text-gray-800">Verification Results</h3>
+            <div id="verificationResult" class="text-sm text-gray-700"></div>
+            <div id="confidenceLevel" class="mt-4 font-bold"></div>
+        </div>
+    </div>
+    <script src="popup.js"></script>
+</body>
+</html>
