@@ -7,8 +7,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const confidenceLevelContainer = document.getElementById('confidenceLevel');
 
   // API Configuration
-  const GSE_API_KEY = "AIzaSyC8Ue6Lat1UowH1LJu6Gq8VQxNCbXUqH2I";
-  const CSE_ID = "a1241cce56f6f4abb";
+  const GSE_API_KEY = "your api";
+  const CSE_ID = "your api";
   const NUM_RESULTS = 10;
 
   async function performTextVerification(text) {
@@ -47,7 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const ocrResponse = await fetch('https://api.ocr.space/parse/image', {
             method: 'POST',
             headers: {
-                'apikey': 'K87227845288957'  // Replace with actual OCR API key
+                'apikey': 'your ocr api'  // Replace with actual OCR API key
             },
             body: formData
         });
