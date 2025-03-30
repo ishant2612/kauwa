@@ -41,20 +41,34 @@ def initialize_kg_manager():
 #Audio extraction from video
 
 
+# def extract_audio(video_file):
+#     # Ensure video file is saved properly
+#     if not os.path.exists(video_file):
+#         raise FileNotFoundError(f"Video file not found: {video_file}")
+
+#     # Define output audio path
+#     audio_path = os.path.splitext(video_file)[0] + ".wav"
+
+#     # Load video and extract audio
+#     video = VideoFileClip(video_file)
+#     video.audio.write_audiofile(audio_path, codec="pcm_s16le", fps=16000)
+
+#     return audio_path  # Return extracted audio path
+ # Return extracted audio file path
+ 
 def extract_audio(video_file):
     # Ensure video file is saved properly
     if not os.path.exists(video_file):
         raise FileNotFoundError(f"Video file not found: {video_file}")
 
-    # Define output audio path
+    # Define output audio path (same base name with .wav extension)
     audio_path = os.path.splitext(video_file)[0] + ".wav"
 
-    # Load video and extract audio
-    video = VideoFileClip(video_file)
-    video.audio.write_audiofile(audio_path, codec="pcm_s16le", fps=16000)
+    # Use a context manager to ensure the clip is closed after processing
+    with VideoFileClip(video_file) as video:
+        video.audio.write_audiofile(audio_path, codec="pcm_s16le", fps=16000)
 
-    return audio_path  # Return extracted audio path
- # Return extracted audio file path
+    return audio_path
 
 
 # Example usage
@@ -122,9 +136,8 @@ def process_input():
         video = request.files["video"]
         if not video:
             return jsonify({"error": "No video file uploaded"}), 400
-    
-        
-        if video.filename == "":
+
+        if not video or video.filename == "":
             return jsonify({"error": "No video file selected"}), 400
 
         # Save the uploaded video
@@ -136,27 +149,45 @@ def process_input():
         dv = DeepfakeVideo()
         audio = AudioDetector("ai audio model/wav2vec2_finetuned")
         agent = VerificationAgent(api_key=API_KEY, cse_id=CSE_ID, gse_api_key=GSE_API_KEY)
+        # Initializing variable 
+        audio_res = "No Audio to Extract"
+        trans_res = "No Transcribe"
         # Extract audio
-        audio_path = extract_audio(video_path)
-        
-        # Predict results
-        audio_res = audio.predict_audio(audio_path)
         result = dv.predict_video(video_path)
-        transcribed =  transcribe_audio(audio_path)
-        trans_res = agent.process_query(transcribed)
+        
+        # Try transcription; if it fails or returns empty, set trans_res accordingly
+        try:
+            audio_path = extract_audio(video_path)
+
+            # Predict results
+            audio_res = audio.predict_audio(audio_path)
+            transcribed = transcribe_audio(audio_path)
+            if not transcribed or transcribed.strip() == "":
+                trans_res = "No Transcribe"
+            else:
+                trans_res = agent.process_query(transcribed)
+            if os.path.exists(audio_path):
+                os.remove(audio_path)
+
+            print("Transcriber result:", trans_res)
+        except Exception as e:
+            print("Transcription error:", e)
+            trans_res = "No Transcribe"
+
         # Cleanup temp files
         if os.path.exists(video_path):
             os.remove(video_path)
-        if os.path.exists(audio_path):
-            os.remove(audio_path)
-        # print("Transcriber",transcribed)
-        print("Transcriber result",trans_res)
-        # print("Result of deepfake", result)
-        # print("Result of audio", audio_res)
-        if trans_res:
-            return jsonify({"deepfake_result": result, "audio_result": audio_res, "transcriber_result": trans_res})
-        else:
-            return jsonify({"deepfake_result": result, "audio_result": audio_res})
+        
+        
+        # Build response JSON
+        response = {
+            "deepfake_result": result,
+            "audio_result": audio_res,
+            "transcriber_result": trans_res
+        }
+        return jsonify(response)
+    
+    
     if "image" in request.files:
         image_file = request.files["image"]
         if not image_file:

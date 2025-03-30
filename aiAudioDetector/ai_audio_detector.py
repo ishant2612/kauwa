@@ -34,3 +34,4 @@ class AudioDetector:
 
 # av = AudioDetector("ai audio model\wav2vec2_finetuned")
 # print(av.predict_audio("LA_E_1009571.flac"))
+

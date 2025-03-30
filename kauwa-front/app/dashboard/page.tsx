@@ -10,7 +10,7 @@ import PreviousOutputs from "../components/PreviousOutputs/PreviousOutputs";
 import { ResponsiveBar } from "@nivo/bar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { text } from "stream/consumers";
-import { text } from "stream/consumers";
+// import { text } from "stream/consumers";
 
 // Updated interface with 'reason' instead of reasonToTrust
 interface FactCheckResult {
@@ -157,11 +157,11 @@ export default function Dashboard() {
         const imageResVerified =
           imageRes && imageRes.toLowerCase() === "justified" ? true : false;
         // console.log("Image Result Verified:", imageResVerified);
-        const verdict = imageResult["Image Analysis Detail"]["verdict"];
-        const imageRes = imageResult["Image context"][0]["verdict"];
+        // const verdict = imageResult["Image Analysis Detail"]["verdict"];
+        // const imageRes = imageResult["Image context"][0]["verdict"];
         // console.log("Image Result:", imageRes);
-        const imageResVerified =
-          imageRes && imageRes.toLowerCase() === "justified" ? true : false;
+        // const imageResVerified =
+        imageRes && imageRes.toLowerCase() === "justified" ? true : false;
         // console.log("Image Result Verified:", imageResVerified);
         const contentVerified =
           verdict && verdict.toLowerCase() === "justified" ? true : false;
@@ -173,14 +173,14 @@ export default function Dashboard() {
           type,
           sourceLink: "Image Analysis Model",
           reason: imageResult["Final Verdict (Image)"],
-          reason: imageResult["Final Verdict (Image)"],
+          // reason: imageResult["Final Verdict (Image)"],
           contentVerification: contentVerified,
           textVerification:
             imageResult["Text Reason"]["verification"]["is_verified"],
           imageVerification: imageResVerified,
-          textVerification:
-            imageResult["Text Reason"]["verification"]["is_verified"],
-          imageVerification: imageResVerified,
+          // textVerification:
+          // imageResult["Text Reason"]["verification"]["is_verified"],
+          // imageVerification: imageResVerified,
         };
 
         setCurrentOutput(result);
