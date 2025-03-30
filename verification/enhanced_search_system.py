@@ -79,11 +79,12 @@ Instructions:
 5. Determine if the fact listed in the claim is a historical event
 6. Give true if the claim is partially or fully supported by the source text, otherwise give false
 7. Give the label for the query like sports , politics ,tech etc
+8. If the source says the claim or the claim in the video is deepfake then give false
 Provide output in this format:
 VERIFIED: [true/false]  (based on the reasoning)
 CONFIDENCE: [0 to 100]
-QUOTES: [relevant quotes from source](all in single line dont use new line)
-REASONING: [your step-by-step analysis](all in single line dont use new line)
+QUOTES: [relevant quotes from source](all in single line don't use new line)
+REASONING: [your step-by-step analysis](all in single line don't use new line)
 LABEL: [label of the query]
 """
         messages = [
@@ -282,6 +283,8 @@ LABEL: [label of the query]
             mcr = self.get_best_false_mcr(verification_results)
 
         print("MCR: ",mcr)
+        print("\n VERIFICATION RESULTS: ",verification_results)
+        print("\n")
 
         # Format results
         return {

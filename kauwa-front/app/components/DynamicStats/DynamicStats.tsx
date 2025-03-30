@@ -186,7 +186,7 @@ function getInputTypeIcon(type: string) {
 function getSourceTitle(type: string): string {
   switch (type) {
     case "video":
-      return "Deepfake Detection Model";
+      return "Video Context Source Link";
     case "image":
       return "Image Analysis Model";
     default:
@@ -197,7 +197,16 @@ function getSourceTitle(type: string): string {
 function getLink(sourceLink: string, type: string): JSX.Element | string {
   switch (type) {
     case "video":
-      return "Deepfake Detection Model";
+      return (
+        <a
+          href={sourceLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-white-500 underline text-xs text-wrap"
+        >
+          {sourceLink}
+        </a>
+      );
     case "image":
       return "Image Analysis Model";
     default:

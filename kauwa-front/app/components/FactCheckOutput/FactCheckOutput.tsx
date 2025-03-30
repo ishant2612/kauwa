@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { motion, AnimatePresence } from "framer-motion";
-import { CheckCircle, AlertTriangle } from "lucide-react";
+import { CheckCircle, AlertTriangle, XCircle } from "lucide-react";
 import { Spinner } from "../Spinner/Spinner";
 
 interface FactCheckResult {
@@ -12,7 +12,12 @@ interface FactCheckResult {
   type: "text" | "video" | "image";
   contentVerification?: boolean;
   deepfakeDetection?: boolean;
-  sourceLink?: string;
+  imageVerification?: boolean;
+  textVerification?: boolean;
+  // sourceLink?: string;
+  videoDeepfake?: boolean;
+  audioDeepfake?: boolean;
+  audioContextVerification?: boolean;
 }
 
 interface FactCheckOutputProps {
@@ -24,6 +29,10 @@ export default function FactCheckOutput({
   isProcessing,
 }: FactCheckOutputProps) {
   console.log("outputtttt", output);
+  console.log("Type============", output?.type);
+  console.log("Audio", output?.audioDeepfake);
+  console.log("video", output?.result);
+  console.log("text", output?.audioContextVerification);
   return (
     <Card className="w-full h-full flex flex-col">
       <CardHeader>
@@ -67,21 +76,180 @@ export default function FactCheckOutput({
                 <p className="text-muted-foreground">{output.query}</p>
               </div>
               {output.type === "image" ? (
-                <ResultItem
-                  title="Content Verification"
-                  result={output.contentVerification}
-                  trueText="True Content"
-                  falseText="False Content"
-                  sourceLink={output.sourceLink}
-                />
+                <>
+                  <div>
+                    <h3 className="font-semibold text-lg mb-1">
+                      Verification:
+                    </h3>
+                    <div
+                      className={`flex items-center ${
+                        output.result ? "text-green-500" : "text-red-500"
+                      }`}
+                    >
+                      {output.result ? (
+                        <CheckCircle className="w-6 h-6 mr-2" />
+                      ) : (
+                        <AlertTriangle className="w-6 h-6 mr-2" />
+                      )}
+                      <span className="text-2xl font-bold">
+                        {output.result ? "Authentic" : "Manipulated"}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 mt-4">
+                    {/* Image Verification */}
+                    <div className="bg-secondary/30 p-3 rounded-lg">
+                      <h4 className="font-medium text-sm mb-1">
+                        Image Verification:
+                      </h4>
+                      <div
+                        className={`flex items-center ${
+                          output.imageVerification
+                            ? "text-green-500"
+                            : "text-red-500"
+                        }`}
+                      >
+                        {output.imageVerification ? (
+                          <CheckCircle className="w-4 h-4 mr-1" />
+                        ) : (
+                          <XCircle className="w-4 h-4 mr-1" />
+                        )}
+                        <span className="text-base font-medium">
+                          {output.imageVerification
+                            ? "No Manipulation"
+                            : "Manipulated"}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Text Verification */}
+                    <div className="bg-secondary/30 p-3 rounded-lg">
+                      <h4 className="font-medium text-sm mb-1">
+                        Text Verification:
+                      </h4>
+                      <div
+                        className={`flex items-center ${
+                          output.textVerification
+                            ? "text-green-500"
+                            : "text-red-500"
+                        }`}
+                      >
+                        {output.textVerification ? (
+                          <CheckCircle className="w-4 h-4 mr-1" />
+                        ) : (
+                          <XCircle className="w-4 h-4 mr-1" />
+                        )}
+                        <span className="text-base font-medium">
+                          {output.textVerification ? "Accurate" : "Misleading"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : output.type === "video" ? (
+                <>
+                  {/* Main Verification Result for Video */}
+                  {/* <div>
+                    <h3 className="font-semibold text-lg mb-1">
+                      Verification:
+                    </h3>
+                    <div
+                      className={`flex items-center ${
+                        output.result ? "text-green-500" : "text-red-500"
+                      }`}
+                    >
+                      {output.result ? (
+                        <CheckCircle className="w-6 h-6 mr-2" />
+                      ) : (
+                        <AlertTriangle className="w-6 h-6 mr-2" />
+                      )}
+                      <span className="text-2xl font-bold">
+                        {output.result ? "Authentic" : "Manipulated"}
+                      </span>
+                    </div>
+                  </div> */}
+
+                  {/* Additional Video Analysis Results */}
+                  <div className="space-y-3 mt-4">
+                    {/* Video Deepfake */}
+                    <div className="bg-secondary/30 p-3 rounded-lg">
+                      <h4 className="font-medium text-sm mb-1">
+                        Video Deepfake:
+                      </h4>
+                      <div
+                        className={`flex items-center ${
+                          output.result == false
+                            ? "text-red-500"
+                            : "text-green-500"
+                        }`}
+                      >
+                        {output.result == false ? (
+                          <AlertTriangle className="w-4 h-4 mr-1" />
+                        ) : (
+                          <CheckCircle className="w-4 h-4 mr-1" />
+                        )}
+                        <span className="text-base font-medium">
+                          {output.result == false ? "Deepfake" : "Real"}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Audio Deepfake */}
+                    <div className="bg-secondary/30 p-3 rounded-lg">
+                      <h4 className="font-medium text-sm mb-1">
+                        Audio Deepfake:
+                      </h4>
+                      <div
+                        className={`flex items-center ${
+                          output.audioDeepfake == false
+                            ? "text-red-500"
+                            : "text-green-500"
+                        }`}
+                      >
+                        {output.audioDeepfake ? (
+                          <AlertTriangle className="w-4 h-4 mr-1" />
+                        ) : (
+                          <CheckCircle className="w-4 h-4 mr-1" />
+                        )}
+                        <span className="text-base font-medium">
+                          {output.audioDeepfake == false ? "Deepfake" : "Real"}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Audio Context Verification */}
+                    <div className="bg-secondary/30 p-3 rounded-lg">
+                      <h4 className="font-medium text-sm mb-1">
+                        Audio Context Verification:
+                      </h4>
+                      <div
+                        className={`flex items-center ${
+                          output.audioContextVerification
+                            ? "text-green-500"
+                            : "text-red-500"
+                        }`}
+                      >
+                        {output.audioContextVerification ? (
+                          <CheckCircle className="w-4 h-4 mr-1" />
+                        ) : (
+                          <XCircle className="w-4 h-4 mr-1" />
+                        )}
+                        <span className="text-base font-medium">
+                          {output.audioContextVerification
+                            ? "Valid"
+                            : "Invalid"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </>
               ) : (
                 <ResultItem
                   title="Result"
                   result={output.result}
-                  trueText={output.type === "video" ? "Authentic" : "True"}
-                  falseText={
-                    output.type === "video" ? "Likely Deepfake" : "False"
-                  }
+                  trueText="True"
+                  falseText="False"
                 />
               )}
             </motion.div>
@@ -108,7 +276,7 @@ interface ResultItemProps {
   result: boolean | undefined;
   trueText: string;
   falseText: string;
-  sourceLink?: string;
+  // sourceLink?: string;
 }
 
 function ResultItem({
@@ -116,8 +284,8 @@ function ResultItem({
   result,
   trueText,
   falseText,
-  sourceLink,
-}: ResultItemProps) {
+}: // sourceLink,
+ResultItemProps) {
   return (
     <div>
       <h3 className="font-semibold text-lg mb-1">{title}:</h3>
@@ -135,16 +303,6 @@ function ResultItem({
           {result ? trueText : falseText}
         </span>
       </div>
-      {sourceLink && (
-        <a
-          href={sourceLink}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-blue-500 underline mt-2 block"
-        >
-          Source
-        </a>
-      )}
     </div>
   );
 }

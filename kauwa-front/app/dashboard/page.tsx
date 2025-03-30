@@ -9,6 +9,7 @@ import DynamicStats from "../components/DynamicStats/DynamicStats";
 import PreviousOutputs from "../components/PreviousOutputs/PreviousOutputs";
 import { ResponsiveBar } from "@nivo/bar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { text } from "stream/consumers";
 
 // Updated interface with 'reason' instead of reasonToTrust
 interface FactCheckResult {
@@ -20,6 +21,11 @@ interface FactCheckResult {
   reason?: string;
   contentVerification?: boolean;
   deepfakeDetection?: boolean;
+  imageVerification?: boolean;
+  textVerification?: boolean;
+  videoDeepfake?: boolean;
+  audioDeepfake?: boolean;
+  audioContextVerification?: boolean;
 }
 
 export default function Dashboard() {
@@ -51,9 +57,9 @@ export default function Dashboard() {
         if (!response.ok) {
           throw new Error("Failed to fetch data from the API");
         }
-        console.log("Response:", response);
+        // console.log("Response:", response);
         const data = await response.json();
-        console.log("Text Result:", data);
+        // console.log("Text Result:", data);
         // data.result: [boolean, confidence, reason, labels]
         let confidence = data.result[1];
         const reason = data.result[2];
@@ -111,9 +117,13 @@ export default function Dashboard() {
         //   "Similarity scores": [ [null|string, number], ... ],
         //   "Parsed Verdict": string,
         //   "Final Verdict": string }
+
+        console.log("====================================");
+        console.log("Data:", data.deepfake_result);
+        console.log("====================================");
         var imageResult = data.deepfake_result;
         imageResult = JSON.parse(imageResult);
-        console.log("Image Result:", imageResult);
+
         // Compute average similarity score from the "Similarity scores" array,
         // considering all valid numeric scores.
         let sum = 0;
@@ -124,18 +134,23 @@ export default function Dashboard() {
         ) {
           imageResult["Similarity scores"].forEach((pair: any[]) => {
             const score = Number(pair[1]);
-            console.log("Score:", score);
+            // console.log("Score:", score);
             if (score > 0) {
               sum += score;
               count++;
             }
           });
         }
-        console.log("Sum:", sum, "Count:", count);
+        // console.log("Sum:", sum, "Count:", count);
         const avgScore = count > 0 ? Math.floor((sum / count) * 100) : 0;
-        console.log("Average similarity score:", avgScore);
+        // console.log("Average similarity score:", avgScore);
         // Determine content verification based on "Parsed Verdict"
-        const verdict = imageResult["Parsed Verdict"];
+        const verdict = imageResult["Image Analysis Detail"]["verdict"];
+        const imageRes = imageResult["Image context"][0]["verdict"];
+        // console.log("Image Result:", imageRes);
+        const imageResVerified =
+          imageRes && imageRes.toLowerCase() === "justified" ? true : false;
+        // console.log("Image Result Verified:", imageResVerified);
         const contentVerified =
           verdict && verdict.toLowerCase() === "justified" ? true : false;
 
@@ -145,8 +160,11 @@ export default function Dashboard() {
           confidence: avgScore,
           type,
           sourceLink: "Image Analysis Model",
-          reason: imageResult["Final Verdict"],
+          reason: imageResult["Final Verdict (Image)"],
           contentVerification: contentVerified,
+          textVerification:
+            imageResult["Text Reason"]["verification"]["is_verified"],
+          imageVerification: imageResVerified,
         };
 
         setCurrentOutput(result);
@@ -188,16 +206,27 @@ export default function Dashboard() {
         }
 
         const data = await response.json();
-        // Expecting data.deepfake_result: { label: "Real" or "Deepfake", probability: number }
+        console.log("====================================");
+        console.log(
+          "Data:",
+          data.transcriber_result?.verification?.is_verified
+        );
         const videoResult = data.deepfake_result;
-        console.log("Video Result:", videoResult);
+        // console.log("Video Result:", videoResult);
         const result: FactCheckResult = {
           query,
           result: videoResult.label === "REAL",
           confidence: videoResult.confidence * 100,
           type,
-          sourceLink: "Deepfake Model",
+          sourceLink: data.transcriber_result.verification.source_link,
           reason: "Deepfake detection", // You may expand on this if needed.
+          // videoDeepfake : videoResult.label === "REAL",
+          audioDeepfake: data.audio_result,
+          audioContextVerification:
+            data.transcriber_result?.verification?.is_verified &&
+            data.transcriber_result?.verification?.is_verified === "TRUE"
+              ? true
+              : false,
         };
 
         setCurrentOutput(result);
@@ -209,7 +238,7 @@ export default function Dashboard() {
 
     setIsProcessing(false);
   };
-  console.log("currentOutput:", currentOutput);
+  // console.log("currentOutput:", currentOutput);
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Navbar />

@@ -1,24 +1,19 @@
-
-
-
 from flask import Flask, request, jsonify
 import json
 from flask_cors import CORS
 import os
-import cv2
-import numpy as np
-import tensorflow as tf
-from tensorflow.keras.applications.xception import preprocess_input  # For image processing
-from tensorflow.keras.applications.efficientnet import preprocess_input as efficientnet_preprocess_input
-from tensorflow.keras.models import load_model
+from moviepy.video.io.VideoFileClip import VideoFileClip
 from imagework import predict
-from tensorflow.keras.applications import EfficientNetB0
-from tensorflow.keras.preprocessing import image
-
+from deepfake.deepfake_api import DeepfakeVideo
 from mtcnn import MTCNN
-from config import API_KEY, CSE_ID, URI, USERNAME, PASSWORD
+import librosa
+import whisper
+from config import API_KEY, CSE_ID, URI, USERNAME, PASSWORD, GSE_API_KEY
 from IntegratingAll import KnowledgeGraphManager
-
+from aiAudioDetector.ai_audio_detector import AudioDetector
+from werkzeug.utils import secure_filename
+from verification.enhanced_search_system import VerificationAgent
+import numpy as np
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": [
     "https://kauwa-314j.vercel.app/dashboard", 
@@ -43,107 +38,52 @@ def initialize_kg_manager():
         kg_manager = KnowledgeGraphManager()  # Initialize without Neo4j
         neo4j_connected = False
 
-# ------------------------------
-# Deepfake Video Detection Setup (New Code)
-# ------------------------------
-# Load trained LSTM model for deepfake detection
-lstm_model = load_model("deepfakeModels\\improved_deepfake_model_2.h5")
+#Audio extraction from video
 
-# Initialize EfficientNetB0 feature extractor
-base_model = EfficientNetB0(weights="imagenet", include_top=False, pooling="avg")
-feature_extractor = tf.keras.Model(inputs=base_model.input, outputs=base_model.output)
 
-# Initialize MTCNN for face detection
-detector = MTCNN()
+def extract_audio(video_file):
+    # Ensure video file is saved properly
+    if not os.path.exists(video_file):
+        raise FileNotFoundError(f"Video file not found: {video_file}")
 
-def extract_faces_from_video(video_path, output_size=(224, 224), max_frames=20):
-    """
-    Extracts faces from a video and processes them for model input.
-    """
-    cap = cv2.VideoCapture(video_path)
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    frame_interval = int(fps // 1) if fps and fps > 0 else 1  # Process 1 frame per second
-    
-    count, saved_count = 0, 0
-    faces = []
+    # Define output audio path
+    audio_path = os.path.splitext(video_file)[0] + ".wav"
 
-    while True:
-        ret, frame = cap.read()
-        if not ret or saved_count >= max_frames:
-            break
+    # Load video and extract audio
+    video = VideoFileClip(video_file)
+    video.audio.write_audiofile(audio_path, codec="pcm_s16le", fps=16000)
 
-        if count % frame_interval == 0:
-            detected_faces = detector.detect_faces(frame)
-            if detected_faces:
-                # Select the largest detected face (assuming it's the primary face)
-                face = max(detected_faces, key=lambda x: x['box'][2] * x['box'][3])
-                x, y, width, height = face['box']
-                x, y = max(0, x), max(0, y)
-                cropped_face = frame[y:y+height, x:x+width]
-                
-                # Resize the face image
-                cropped_face = cv2.resize(cropped_face, output_size)
-                faces.append(cropped_face)
-                saved_count += 1
+    return audio_path  # Return extracted audio path
+ # Return extracted audio file path
 
-        count += 1
 
-    cap.release()
-    return faces
+# Example usage
+# extract_audio("input_video.mp4", "extracted_audio.wav")
+# transcribing audio
 
-def extract_features_from_faces(faces, max_frames=20):
-    """
-    Converts faces into EfficientNetB0 embeddings for LSTM input.
-    """
-    feature_list = []
-    
-    for face in faces:
-        img_array = image.img_to_array(face)
-        img_array = np.expand_dims(img_array, axis=0)
-        img_array = efficientnet_preprocess_input(img_array)
-        
-        features = feature_extractor.predict(img_array)
-        feature_list.append(features.flatten())
 
-    # Pad with zeros if fewer than max_frames
-    while len(feature_list) < max_frames:
-        feature_list.append(np.zeros(1280))  # EfficientNetB0 output size
 
-    return np.array(feature_list)
+def load_audio_librosa(audio_path, sr=16000):
+    """ Load audio file using librosa instead of FFmpeg """
+    audio, _ = librosa.load(audio_path, sr=sr, mono=True)  # Ensure mono audio
+    return np.array(audio, dtype=np.float32)
 
-def predict_video(video_path):
-    """
-    Predict if a given video is real or deepfake using the new pipeline.
-    Accepts only local video file paths.
-    """
-    print(f"Processing video: {video_path}")
-    
-    # Step 1: Extract faces from video
-    faces = extract_faces_from_video(video_path)
-    if len(faces) == 0:
-        print("No faces detected in the video.")
-        return {"error": "No faces detected in the video."}
-    
-    # Step 2: Extract features from faces
-    features = extract_features_from_faces(faces)
-    
-    # Step 3: Reshape for LSTM (batch_size=1, timesteps=max_frames, features=1280)
-    features = np.expand_dims(features, axis=0)
-    
-    # Step 4: Predict using the trained LSTM model
-    prediction = lstm_model.predict(features)
-    print("Prediction results:", prediction)
+def transcribe_audio(audio_path):
+    """ Transcribe audio using Whisper without FFmpeg """
+    model = whisper.load_model("base")  # Load Whisper model
+    audio = load_audio_librosa(audio_path)  # Use librosa to load audio
+    result = model.transcribe(audio)
+    return result["text"]
 
-    # Step 5: Interpret the result
-    predicted_label = "FAKE" if prediction[0][0] < 0.4 else "REAL"
-    confidence = prediction[0][0] if predicted_label == "FAKE" else 1 - prediction[0][0]
-    
-    print(f"Prediction: {predicted_label} (Confidence: {confidence:.2f})")
-    return {"label": predicted_label, "confidence": float(confidence)}
+
 
 def predict_image(image_path):
     return predict(image_path)
     
+    
+#------------------------------
+Upload_folder = os.path.join(os.getcwd(), "uploads")
+os.makedirs(Upload_folder, exist_ok=True)
 # ------------------------------
 # Unified API Endpoint: /process
 # ------------------------------
@@ -155,19 +95,68 @@ def process_input():
       - Deepfake detection (expects a file upload with key "video" or "image")
     """
     # If a video file is provided, process it with the deepfake model.
+    # if "video" in request.files:
+    #     video = request.files["video"]
+        
+        
+    #     if not video:
+    #         return jsonify({"error": "No video file uploaded"}), 400
+    #     dv = DeepfakeVideo()
+    #     audio = AudioDetector("ai audio model\wav2vec2_finetuned")
+    #     audio_path = extract_audio(video)
+    #     audio_res = audio.predict_audio(audio_path)
+    #     video_path = f"temp_{video.filename}"
+    #     video.save(video_path)
+        
+    #     result = dv.predict_video(video_path)
+    #     if os.path.exists(video_path):
+    #         os.remove(video_path)
+    #     print("Result of deepfake", result)
+    #     print("Result of audio", audio_res)
+    #     if os.path.exists(audio_path):
+    #         os.remove(audio_path)
+    #     return jsonify({"deepfake_result": result})
+    
+    
     if "video" in request.files:
         video = request.files["video"]
         if not video:
             return jsonify({"error": "No video file uploaded"}), 400
+    
         
-        video_path = f"temp_{video.filename}"
+        if video.filename == "":
+            return jsonify({"error": "No video file selected"}), 400
+
+        # Save the uploaded video
+        filename = secure_filename(video.filename)
+        video_path = os.path.join(Upload_folder, filename)
         video.save(video_path)
-        result = predict_video(video_path)
+
+        # Initialize models
+        dv = DeepfakeVideo()
+        audio = AudioDetector("ai audio model/wav2vec2_finetuned")
+        agent = VerificationAgent(api_key=API_KEY, cse_id=CSE_ID, gse_api_key=GSE_API_KEY)
+        # Extract audio
+        audio_path = extract_audio(video_path)
+        
+        # Predict results
+        audio_res = audio.predict_audio(audio_path)
+        result = dv.predict_video(video_path)
+        transcribed =  transcribe_audio(audio_path)
+        trans_res = agent.process_query(transcribed)
+        # Cleanup temp files
         if os.path.exists(video_path):
             os.remove(video_path)
-        print("Result of deepfake", result)
-        return jsonify({"deepfake_result": result})
-    
+        if os.path.exists(audio_path):
+            os.remove(audio_path)
+        # print("Transcriber",transcribed)
+        print("Transcriber result",trans_res)
+        # print("Result of deepfake", result)
+        # print("Result of audio", audio_res)
+        if trans_res:
+            return jsonify({"deepfake_result": result, "audio_result": audio_res, "transcriber_result": trans_res})
+        else:
+            return jsonify({"deepfake_result": result, "audio_result": audio_res})
     if "image" in request.files:
         image_file = request.files["image"]
         if not image_file:

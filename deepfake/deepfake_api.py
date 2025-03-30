@@ -1,77 +1,116 @@
-from flask import Flask, request, jsonify
-import os
 import cv2
-import numpy as np
 import tensorflow as tf
-from tensorflow.keras.applications.xception import preprocess_input
+from mtcnn import MTCNN
+import numpy as np
+from tensorflow.keras.applications.efficientnet import preprocess_input as efficientnet_preprocess_input
 from tensorflow.keras.models import load_model
+from tensorflow.keras.applications import EfficientNetB0
+from tensorflow.keras.preprocessing import image
 
-app = Flask(__name__)
+# Load the LSTM model
+lstm_model = load_model("deepfakeModels/improved_deepfake_model_2.h5")
 
-# ------------------------------
-# Load Model
-# ------------------------------
-MODEL_PATH = "deepfakeModels\\best_deepfake_classifier.h5"
-NUM_FRAMES = 10
-TARGET_SIZE = (299, 299)
+# Initialize EfficientNetB0 feature extractor
+base_model = EfficientNetB0(weights="imagenet", include_top=False, pooling="avg")
+feature_extractor = tf.keras.Model(inputs=base_model.input, outputs=base_model.output)
 
-if not os.path.exists(MODEL_PATH):
-    raise FileNotFoundError(f"Model file '{MODEL_PATH}' not found.")
+# Initialize MTCNN for face detection
+detector = MTCNN()
 
-model = load_model(MODEL_PATH)
-
-# ------------------------------
-# Utility Function: Sample Frames
-# ------------------------------
-def sample_frames(video_path, num_frames=NUM_FRAMES, target_size=TARGET_SIZE):
-    cap = cv2.VideoCapture(video_path)
-    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    if total_frames < 1:
-        cap.release()
-        raise ValueError(f"Video {video_path} has no frames.")
-
-    frame_indices = np.linspace(0, total_frames - 1, num_frames, dtype=int)
-    frames = []
-    for idx in frame_indices:
-        cap.set(cv2.CAP_PROP_POS_FRAMES, idx)
-        ret, frame = cap.read()
-        if not ret:
-            break
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        frame = cv2.resize(frame, target_size)
-        frames.append(frame)
-
-    cap.release()
+class DeepfakeVideo:
     
-    if len(frames) < num_frames:
-        while len(frames) < num_frames:
-            frames.append(frames[-1])
+    def extract_faces_from_video(self, video_path, output_size=(224, 224), max_frames=20):
+        """
+        Extracts faces from a video and processes them for model input.
+        """
+        cap = cv2.VideoCapture(video_path)
+        fps = cap.get(cv2.CAP_PROP_FPS) or 25  # Default to 25 if FPS is unavailable
+        frame_interval = int(max(1, fps // 1))  # Ensure frame_interval is >= 1
+        
+        count, saved_count = 0, 0
+        faces = []
 
-    frames = np.array(frames, dtype=np.float32)
-    frames = preprocess_input(frames)
-    return frames
+        while True:
+            ret, frame = cap.read()
+            if not ret or saved_count >= max_frames:
+                break
 
-# ------------------------------
-# Deepfake Prediction API Route
-# ------------------------------
-@app.route("/predict", methods=["POST"])
-def predict():
-    if "video" not in request.files:
-        return jsonify({"error": "No video file uploaded"}), 400
+            if count % frame_interval == 0:
+                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # Convert to RGB
+                detected_faces = detector.detect_faces(frame_rgb)
 
-    video = request.files["video"]
-    video_path = f"temp_{video.filename}"
-    video.save(video_path)
+                if detected_faces:
+                    # Select the largest detected face
+                    face = max(detected_faces, key=lambda x: x['box'][2] * x['box'][3])
+                    x, y, width, height = face['box']
+                    x, y = max(0, x), max(0, y)
+                    
+                    cropped_face = frame_rgb[y:y+height, x:x+width]
+                    
+                    if cropped_face.size == 0:
+                        continue  # Skip empty faces
+                    
+                    cropped_face = cv2.resize(cropped_face, output_size)
+                    faces.append(cropped_face)
+                    saved_count += 1
 
-    try:
-        frames = sample_frames(video_path)
-        video_input = np.expand_dims(frames, axis=0)
-        pred_prob = model.predict(video_input)[0][0]
-        label = "Real" if pred_prob >= 0.8 else "Deepfake"
-        # os.remove(video_path)  # Clean up
-        return jsonify({"label": label, "probability": float(pred_prob)})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+            count += 1
 
-if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5000)
+        cap.release()
+        return faces
+
+    def extract_features_from_faces(self, faces, max_frames=20):
+        """
+        Converts faces into EfficientNetB0 embeddings for LSTM input.
+        """
+        feature_list = []
+        
+        for face in faces:
+            if face.shape[-1] == 1:  # Convert grayscale to RGB if needed
+                face = cv2.cvtColor(face, cv2.COLOR_GRAY2RGB)
+
+            img_array = image.img_to_array(face)
+            img_array = np.expand_dims(img_array, axis=0)
+            img_array = efficientnet_preprocess_input(img_array)
+            
+            features = feature_extractor.predict(img_array)
+            feature_list.append(features.flatten())
+
+        # Ensure fixed sequence length for LSTM
+        if len(feature_list) < max_frames:
+            while len(feature_list) < max_frames:
+                feature_list.append(np.zeros(1280))  # EfficientNetB0 output size
+        else:
+            feature_list = feature_list[:max_frames]  # Trim excess frames
+        
+        return np.array(feature_list)
+
+    def predict_video(self, video_path):
+        """
+        Predict if a given video is real or deepfake using the new pipeline.
+        Accepts only local video file paths.
+        """
+        print(f"Processing video: {video_path}")
+        
+        # Step 1: Extract faces from video
+        faces = self.extract_faces_from_video(video_path)
+        if len(faces) == 0:
+            print("No faces detected in the video.")
+            return {"error": "No faces detected in the video."}
+        
+        # Step 2: Extract features from faces
+        features = self.extract_features_from_faces(faces)
+        
+        # Step 3: Reshape for LSTM (batch_size=1, timesteps=max_frames, features=1280)
+        features = np.expand_dims(features, axis=0)
+        
+        # Step 4: Predict using the trained LSTM model
+        prediction = lstm_model.predict(features)
+        print("Prediction results:", prediction)
+
+        # Step 5: Interpret the result
+        predicted_label = "FAKE" if prediction[0][0] < 0.4 else "REAL"
+        confidence = prediction[0][0] if predicted_label == "FAKE" else 1 - prediction[0][0]
+        
+        print(f"Prediction: {predicted_label} (Confidence: {confidence:.2f})")
+        return {"label": predicted_label, "confidence": float(confidence)}
