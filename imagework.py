@@ -23,6 +23,7 @@ from config import API_KEY, CSE_ID, GSE_API_KEY
 
 # Set up credentials for Google Cloud Vision
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = r"imageModel\\vision-key.json"
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = r"imageModel\\vision-key.json"
 
 
 
@@ -166,6 +167,8 @@ def extract_clean_content(url: str) -> str:
         content = trafilatura.extract(downloaded, include_tables=False)
         # print("------------------------------------------------------------------++++++++++++++++++++++++++++")
         # print(content)
+        # print("------------------------------------------------------------------++++++++++++++++++++++++++++")
+        # print(content)
         if not content:
             # Fallback to BeautifulSoup
             response = requests.get(url, timeout=10)
@@ -237,9 +240,11 @@ def process_claim(image_path: str, url: str, api_key: str = None) -> str:
     """
     now = datetime.now()
     # print("Now:", now)
+    # print("Now:", now)
 
     # Current date only
     today = date.today()
+    # print("Today:", today)
     # print("Today:", today)
     ocr_text = extract_text(image_path)
     html_content = extract_clean_content(url)
@@ -373,9 +378,11 @@ def final_boss(image_context, text_reasons, extracted_text, api_key: str = None)
     """
     now = datetime.now()
     # print("Now:", now)
+    # print("Now:", now)
 
     # Current date only
     today = date.today()
+    # print("Today:", today)
     # print("Today:", today)
     combined_prompt = f"""
 Claim Extracted from the Image:
@@ -586,5 +593,7 @@ def predict(image_path):
   
     print(result_data.keys)
     return json.dumps(result_data, indent=4)
+# result_data = predict(r"train.jpg")
+# print("result data ->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>",result_data)
 # result_data = predict(r"train.jpg")
 # print("result data ->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>",result_data)

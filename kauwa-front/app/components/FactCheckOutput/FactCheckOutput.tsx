@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle, AlertTriangle, XCircle } from "lucide-react";
+import { CheckCircle, AlertTriangle, XCircle } from "lucide-react";
 import { Spinner } from "../Spinner/Spinner";
 
 interface FactCheckResult {
@@ -277,6 +278,7 @@ interface ResultItemProps {
   trueText: string;
   falseText: string;
   // sourceLink?: string;
+  // sourceLink?: string;
 }
 
 function ResultItem({
@@ -284,6 +286,8 @@ function ResultItem({
   result,
   trueText,
   falseText,
+}: // sourceLink,
+ResultItemProps) {
 }: // sourceLink,
 ResultItemProps) {
   return (
