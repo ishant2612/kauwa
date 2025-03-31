@@ -9,6 +9,7 @@ import requests
 from bs4 import BeautifulSoup
 import trafilatura
 from groq import Groq
+from multilingual import Translator
 @dataclass
 class VerificationResult:
     is_verified: bool
@@ -17,7 +18,9 @@ class VerificationResult:
     relevant_quotes: Optional[str] = None
     label: Optional[str] = None
     source_url: Optional[str] = None
-
+    context: Optional[str] =None
+    
+# for translationn api_key="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"
 import os
 GSE_API_KEY = "AIzaSyCGXItNdfzorYgMqdC-WOndRi4LeLzyrvU"
 CSE_ID = "c624198a099f14b83"
@@ -64,29 +67,33 @@ class VerificationAgent:
         """
         Verify if a claim is supported by source text using Groq.
         """
+        delimiter = "|||"
+    
         prompt = f"""Analyze if this claim is fully supported by the source text.
         
-Claim: {claim}
+    Claim: {claim}
 
-Source Text: {source_text[:512]}
+    Source Text: {source_text[:750]}
 
-Instructions:
-0. Ignore the tenses in the source and claim texts and focus on the meaning 
-1. Carefully analyze if the claim's meaning matches the source
-2. Look for explicit evidence that supports or contradicts the claim
-3. Consider any missing context or ambiguities
-4. Determine if the source provides sufficient information
-5. Determine if the fact listed in the claim is a historical event
-6. Give true if the claim is partially or fully supported by the source text, otherwise give false
-7. Give the label for the query like sports , politics ,tech etc
-8. If the source says the claim or the claim in the video is deepfake then give false
-Provide output in this format:
-VERIFIED: [true/false]  (based on the reasoning)
-CONFIDENCE: [0 to 100]
-QUOTES: [relevant quotes from source](all in single line don't use new line)
-REASONING: [your step-by-step analysis](all in single line don't use new line)
-LABEL: [label of the query]
-"""
+    Instructions:
+    1. Carefully analyze if the claim's meaning matches the source
+    2. Look for explicit evidence that supports or contradicts the claim
+    3. Consider any missing context or ambiguities
+    4. Determine if the source provides sufficient information
+    5. Determine if the fact listed in the claim is a historical event
+    6. Give true if the claim is partially or fully supported by the source text, otherwise give false
+    7. Give the label for the query like sports, politics, tech, etc.
+    8. If the source says the claim or the claim in the video is deepfake, then give false.
+
+    Provide output in this exact format:
+    VERIFIED: [true/false] {delimiter}  
+    CONFIDENCE: [0 to 100] {delimiter}  
+    QUOTES: [relevant quotes from source] {delimiter}  
+    REASONING: [your step-by-step analysis] {delimiter}  
+    LABEL: [label of the query] {delimiter}  
+    CONTEXT: [ Context of the Source including relevant stuff for claim or subject in the claim] {delimiter}  
+    """
+        
         messages = [
             {"role": "system", "content": "You are a precise fact verification system."},
             {"role": "user", "content": prompt}
@@ -94,8 +101,8 @@ LABEL: [label of the query]
         
         try:
             response_text = self.groq_chat_completion(messages, api_key=self.api_key)
-            # print("asdfasdfasdfasdfasdfasdf"   ,response_text)
-            return self._parse_response(response_text)
+            print(response_text)
+            return self._parse_response(response_text, delimiter)
             
         except Exception as e:
             return VerificationResult(
@@ -103,47 +110,54 @@ LABEL: [label of the query]
                 confidence=0.0,
                 reasoning=f"Error during verification: {str(e)}",
                 relevant_quotes=None,
-                label = None
+                label=None,
+                context=None
             )
+
     
-    def _parse_response(self, response: str) -> VerificationResult:
+
+
+    def _parse_response(self, response: str, delimiter: str = "|||") -> VerificationResult:
         """
-        Parse the structured response into a VerificationResult
+        Parses the structured response using regex to capture each field.
         """
         try:
-            lines = response.split('\n')
-            verified = False
-            confidence = 0.0
-            quotes = None
-            reasoning = ""
-            label = None
-            for line in lines:
-                if line.startswith('VERIFIED:'):
-                    verified = 'true' in line.lower()
-                elif line.startswith('CONFIDENCE:'):
-                    confidence = float(line.split(':')[1].strip().split()[0])
-                elif line.startswith('QUOTES:'):
-                    quotes = line.split(':')[1].strip()
-                elif line.startswith('REASONING:'):
-                    reasoning = line.split(':')[1].strip()
-                elif line.startswith('LABEL:'):
-                    label = line.split(':')[1].strip()
-            
+            # Regular expressions for each field
+            verified_match = re.search(r"VERIFIED:\s*(true|false)", response, re.IGNORECASE)
+            confidence_match = re.search(r"CONFIDENCE:\s*([\d\.]+)", response)
+            quotes_match = re.search(r"QUOTES:\s*(.*?)\s*(\|\|\||$)", response, re.DOTALL)
+            reasoning_match = re.search(r"REASONING:\s*(.*?)\s*(\|\|\||$)", response, re.DOTALL)
+            label_match = re.search(r"LABEL:\s*(.*?)\s*(\|\|\||$)", response, re.DOTALL)
+            context_match = re.search(r"CONTEXT:\s*(.*?)\s*(\|\|\||$)", response, re.DOTALL)
+
+            verified = verified_match.group(1).strip().lower() == "true" if verified_match else False
+            confidence = float(confidence_match.group(1).strip()) if confidence_match else 0.0
+            quotes = quotes_match.group(1).strip() if quotes_match else None
+            reasoning = reasoning_match.group(1).strip() if reasoning_match else ""
+            label = label_match.group(1).strip() if label_match else None
+            context = context_match.group(1).strip() if context_match else None
+            print("result-------------->",verified,confidence,reasoning,context,label)
+
             return VerificationResult(
                 is_verified=verified,
                 confidence=confidence,
                 reasoning=reasoning,
-                relevant_quotes=quotes
-                ,label = label
+                relevant_quotes=quotes,
+                label=label,
+                context=context
             )
-        except:
+        
+        except Exception as e:
             return VerificationResult(
                 is_verified=False,
                 confidence=0.0,
-                reasoning="Failed to parse verification response",
-                relevant_quotes=None
-                ,label = None
+                reasoning=f"Failed to parse verification response: {str(e)}",
+                relevant_quotes=None,
+                label=None,
+                context=None
             )
+
+
 
     def batch_verify(self, claim: str, sources: list[str], batch_size: int = 5) -> list[VerificationResult]:
         """
@@ -235,6 +249,13 @@ LABEL: [label of the query]
     def process_query(self, query: str, num_results: int = 5) -> dict:
         """Perform query processing: search, extract, and verify."""
         # Perform Google search
+        translator=Translator(api_key="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")
+        translated_query=translator.translate(query)
+        query=translated_query['translation']
+        language=translated_query['language']
+        if(language.lower()!= "english"):
+            pass
+
         search_results = self.google_search(query, num_results)
         if not search_results:
             return {'error': 'No results found'}
@@ -294,6 +315,7 @@ LABEL: [label of the query]
                 "reasoning": mcr.reasoning,
                 "relevant_quotes": mcr.relevant_quotes,
                 "label": mcr.label,
+                "context": mcr.context,
                 "source_link": mcr.source_url if mcr else "Unknown"
             },
             'all_sources': [
@@ -309,17 +331,17 @@ LABEL: [label of the query]
 # SAMPLE USE CASE
 
 # # Initialize agent
-# agent = VerificationAgent(api_key="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", cse_id=CSE_ID, gse_api_key=GSE_API_KEY)
+agent = VerificationAgent(api_key="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", cse_id=CSE_ID, gse_api_key=GSE_API_KEY)
 
-# # # Single verification
+# # Single verification
 # result = agent.verify(
-    # claim="Modi is the president of USA",
+#     claim="Modi is the president of USA",
     
 
 # )
 
-# result = agent.process_query("Roanldo is a cricket player")['verification']
-# print(result)
+result = agent.process_query("மோடி இந்தியாவின் ஜனாதிபதி")
+print(result)
 # print("Verified:",{result['is_verfied']})
 # print(f"Confidence: {result['confidence']}%")
 # print(f"Reasoning: {result['reasoning']}")
