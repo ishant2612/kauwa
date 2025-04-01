@@ -17,12 +17,13 @@ from groq import Groq
 import trafilatura
 from verification.enhanced_search_system import VerificationAgent
 from datetime import datetime, date, time, timedelta
+# from verification.multilingual import Translator
 
 
 from config import API_KEY, CSE_ID, GSE_API_KEY
 
 # Set up credentials for Google Cloud Vision
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = r"vision-key.json"
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = r"D:\PROJECTS\vision key\vision-key.json"
 
 
 
@@ -165,7 +166,7 @@ def extract_clean_content(url: str) -> str:
         downloaded = trafilatura.fetch_url(url)
         content = trafilatura.extract(downloaded, include_tables=False)
         print("------------------------------------------------------------------++++++++++++++++++++++++++++")
-        print(content)
+        # print(content)
         if not content:
             # Fallback to BeautifulSoup
             response = requests.get(url, timeout=10)
@@ -236,11 +237,11 @@ def process_claim(image_path: str, url: str, api_key: str = None) -> str:
     to process_query.
     """
     now = datetime.now()
-    print("Now:", now)
+    # print("Now:", now)
 
     # Current date only
     today = date.today()
-    print("Today:", today)
+    # print("Today:", today)
     ocr_text = extract_text(image_path)
     html_content = extract_clean_content(url)
     
@@ -364,7 +365,7 @@ def final_boss(image_context, text_reasons, extracted_text, api_key: str = None)
     
     Parameters:
     - image_context: Detailed analysis context from sources which used the image.
-    - text_reasons: Detailed analysis reasons from text-based searches.
+    - text based analysis result: this is the text based result you can blindly trust it.
     - extracted_text: The OCR-extracted claim from the image.
     - api_key: API key for the Groq client (uses default if not provided).
     
@@ -372,17 +373,17 @@ def final_boss(image_context, text_reasons, extracted_text, api_key: str = None)
     - The final analysis as processed by process_query.
     """
     now = datetime.now()
-    print("Now:", now)
+    # print("Now:", now)
 
     # Current date only
     today = date.today()
-    print("Today:", today)
+    # print("Today:", today)
     combined_prompt = f"""
 Claim Extracted from the Image:
 {extracted_text}
 
 Aggregated Evidence from Searches:
-Image-Based Analysis Context:
+Image-Based Analysis Result(you can trust the verdict, it was obtained by rigrously search and verification):
 {image_context}
 
 Text-Based Analysis Reasons:
@@ -500,6 +501,23 @@ def convert_numpy(obj):
         return int(obj)
     return obj  # Return as-is if it's not a NumPy type
 
+def extract_verification_result(data, as_list=False):
+    verification = data.get("verification", {})
+    
+    result = {
+        "Is Verified": verification.get("is_verified", "Unknown"),
+        "Confidence": verification.get("confidence", "Unknown"),
+        "Reasoning": verification.get("reasoning", "No reasoning provided."),
+        "Relevant Quotes": verification.get("relevant_quotes", "No quotes provided."),
+        "Label": verification.get("label", "No label provided."),
+        "Context": verification.get("context", "No context provided."),
+        "Source Link": verification.get("source_link", "No source link provided.")
+    }
+    
+    if as_list:
+        return list(result.values())  # Return as a list
+    else:
+        return "\n".join([f"{key}: {value}" for key, value in result.items()])  # Return as a formatted string
 
 
 import json
@@ -515,7 +533,12 @@ def predict(image_path):
     # Extract OCR text from the original image.
     extracted_text = extract_text(image_path)
     result_data["Extracted OCR Text"] = extracted_text
-    
+    if extracted_text:
+        agent = VerificationAgent(api_key=API_KEY, cse_id=CSE_ID, gse_api_key=GSE_API_KEY)
+        text_result = agent.process_query(extracted_text)
+        text_reasons=extract_verification_result(text_result, as_list=True)
+        print(text_result)
+        print(text_reasons)
     # Crop the image for further processing.
     cropped_paths = crop_image(image_path)
     result_data["Cropped image paths"] = cropped_paths
@@ -526,48 +549,48 @@ def predict(image_path):
         
         # Detect web URLs using the cropped image.
         detected_urls = detect_web(first_cropped)[:]
-        result_data["Detected URLs from cropped image"] = detected_urls
-        print(result_data)
+        # result_data["Detected URLs from cropped image"] = detected_urls
+        # print(result_data)
         # Compute similarity scores for each URL.
         # Each candidate is a tuple of (url, similarity_score)
-        candidates = [
-            (url, float(sim) if isinstance(sim, np.float32) else sim)
-            for url, sim in [process_url_and_compare(first_cropped, url) for url in detected_urls]
-        ]
-        result_data["Similarity scores"] = candidates
+        # candidates = [
+        #     url, float(sim) if isinstance(sim, np.float32) else sim)
+        #     for url, sim in [process_url_and_compare(first_cropped, url) for url in detected_urls]
+        # ]
+        # result_data["Similarity scores"] = candidates
         
         # Iterate over each candidate.
         api_key = "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"  # or use environment variable
-        for candidate in candidates:
-            url_candidate, sim_score = candidate
-            if url_candidate and sim_score is not None and sim_score >= 0.70:
-                raw_response = process_claim(image_path, url_candidate, api_key=api_key)
+        for candidate in detected_urls:
+            # url_candidate, sim_score = candidate
+            # if url_candidate and sim_score is not None and sim_score >= 0.70:
+            raw_response = process_claim(image_path, candidate, api_key=api_key)
                 
                 # Extract JSON from the raw response
-                try:
-                    response_json = extract_json(raw_response)
-                except Exception as e:
-                    image_context.append({
-                        "url": url_candidate,
-                        "error": f"Error extracting JSON: {str(e)}"
-                    })
-                    continue
-                
-                verdict = response_json.get("verdict", "").lower()
-                context_detail = response_json.get("context", "No detailed reason provided")
-                
+            try:
+                response_json = extract_json(raw_response)
+            except Exception as e:
                 image_context.append({
-                    "url": url_candidate,
-                    "verdict": verdict,
-                    "context": context_detail
+                    "url": candidate,
+                    "error": f"Error extracting JSON: {str(e)}"
+                })
+                continue
+                
+            verdict = response_json.get("verdict", "").lower()
+            context_detail = response_json.get("context", "No detailed reason provided")
+                
+            image_context.append({
+                "url": candidate,
+                "verdict": verdict,
+                "context": context_detail
                 })
                 
                 # Early termination if verdict is clearly justified
-                if verdict in ["justified", "supported"]:
-                    result_data["Final Verdict (Image)"] = "The claim is supported (justified) based on image analysis."
-                    result_data["Image Analysis Detail"] = response_json
+            if verdict in ["justified", "supported"]:
+                result_data["Final Verdict (Image)"] = "The claim is supported (justified) based on image analysis."
+                result_data["Image Analysis Detail"] = response_json
                     # Optionally, you might break out of the loop here if you only want one successful candidate.
-                    break
+                break
     else:
         result_data["Error"] = "No cropped images available for image-based processing."
     
@@ -575,17 +598,16 @@ def predict(image_path):
     # Current date and time
 
 
-    if extracted_text:
-        agent = VerificationAgent(api_key=API_KEY, cse_id=CSE_ID, gse_api_key=GSE_API_KEY)
-        text_result = agent.process_query(extracted_text)
+    
         
   
     result_data["Image context"] = image_context
-    result_data["Text Reason"] = text_result
+    result_data["Text Reason"] = text_reasons
     print("Image context:", image_context)
     print("Text Reasons:", text_reasons)
     # 4. Call final_boss to perform the multifaceted analysis based on both reason lists.
     final_analysis = final_boss(image_context, text_reasons, extracted_text)
+    final_analysis= extract_json(final_analysis)
     result_data["Final Analysis"] = final_analysis
     print("Final Analysis:", final_analysis)
     return json.dumps(result_data, indent=4)

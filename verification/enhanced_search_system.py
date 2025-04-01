@@ -9,7 +9,7 @@ import requests
 from bs4 import BeautifulSoup
 import trafilatura
 from groq import Groq
-from multilingual import Translator
+# from multilingual import Translator
 @dataclass
 class VerificationResult:
     is_verified: bool
@@ -249,14 +249,17 @@ class VerificationAgent:
     def process_query(self, query: str, num_results: int = 5) -> dict:
         """Perform query processing: search, extract, and verify."""
         # Perform Google search
+        print("Inside process query check 1")
         translator=Translator(api_key="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")
         translated_query=translator.translate(query)
         query=translated_query['translation']
         language=translated_query['language']
+        print("Inside process query check 2")
         if(language.lower()!= "english"):
             pass
 
         search_results = self.google_search(query, num_results)
+        print("Inside process query check 3")
         if not search_results:
             return {'error': 'No results found'}
         
@@ -280,8 +283,9 @@ class VerificationAgent:
                     print(f"Error processing {item['link']}: {e}")
         
         # Verify the claim
+        print("Inside process query check 4")
         verification_results = self.batch_verify(query, sources)
-        
+        print("Inside process query check 5")
         # Attach corresponding URLs
         #print("URL MAPPINGS: ",url_mapping)
         for result, source in zip(verification_results, sources):
@@ -292,13 +296,13 @@ class VerificationAgent:
 
         last_conf = 0
         mcr = None
-
+        print("Inside process query check 5")
         # Select the best verification result
         for result in verification_results:
             if result.is_verified and result.confidence >= last_conf:
                 mcr = result
                 last_conf = result.confidence
-
+        print("Inside process query check 6")
         # If all results are false, use the best false one
         if not mcr:
             mcr = self.get_best_false_mcr(verification_results)
@@ -306,7 +310,7 @@ class VerificationAgent:
         print("MCR: ",mcr)
         print("\n VERIFICATION RESULTS: ",verification_results)
         print("\n")
-
+        print("Inside process query check 6")
         # Format results
         return {
             'verification': {
@@ -326,12 +330,83 @@ class VerificationAgent:
 
 
 
+class Translator:
+    def __init__(self, api_key: str = None):
+        self.api_key = api_key or os.environ.get("GROQ_API_KEY")
+        if not self.api_key:
+            raise ValueError("The GROQ_API_KEY must be provided either via the api_key parameter or environment variable.")
+        self.model = "llama-3.3-70b-versatile"
 
+    def groq_chat_completion(self, messages: list) -> str:
+        """
+        Uses the Groq client to get a chat completion from the model.
+        Streams the result and returns the complete response as a string.
+        """
+        client = Groq(api_key=self.api_key)
+        completion = client.chat.completions.create(
+            model=self.model,
+            messages=messages,
+            temperature=0.6,
+            top_p=0.95,
+            stream=True,
+        )
+        
+        response = ""
+        for chunk in completion:
+            response += (chunk.choices[0].delta.content or "")
+        return response
+
+    def translate(self, query: str) -> dict:
+        """
+        Translate the input query to English and detect the original language.
+        """
+        delimiter = "|||"
+        prompt = f"""Translate the given text to English and detect its original language.
+        
+        Text: {query}
+        
+        Instructions:
+        1. Detect the language of the input text.
+        2. Translate it into English.
+        3. Provide the output in this exact format:
+        TRANSLATION: [translated text] {delimiter}  
+        LANGUAGE: [original language] {delimiter}  
+        """
+        
+        messages = [
+            {"role": "system", "content": "You are an expert translator."},
+            {"role": "user", "content": prompt}
+        ]
+        
+        try:
+            response_text = self.groq_chat_completion(messages)
+            return self._parse_response(response_text, delimiter)
+        except Exception as e:
+            return {
+                "translation": None,
+                "language": None,
+                "error": f"Error during translation: {str(e)}"
+            }
+
+    def _parse_response(self, response: str, delimiter: str = "|||") -> dict:
+        """
+        Parses the structured response using regex to capture each field.
+        """
+        try:
+            translation_match = re.search(r"TRANSLATION:\s*(.*?)\s*(\|\|\||$)", response, re.DOTALL)
+            language_match = re.search(r"LANGUAGE:\s*(.*?)\s*(\|\|\||$)", response, re.DOTALL)
+            
+            translation = translation_match.group(1).strip() if translation_match else None
+            language = language_match.group(1).strip() if language_match else None
+            
+            return {"translation": translation, "language": language}
+        except Exception as e:
+            return {"translation": None, "language": None, "error": f"Failed to parse response: {str(e)}"}
 
 # SAMPLE USE CASE
 
 # # Initialize agent
-agent = VerificationAgent(api_key="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", cse_id=CSE_ID, gse_api_key=GSE_API_KEY)
+# agent = VerificationAgent(api_key="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", cse_id=CSE_ID, gse_api_key=GSE_API_KEY)
 
 # # Single verification
 # result = agent.verify(
