@@ -110,7 +110,7 @@ class DeepfakeVideo:
 
         # Step 5: Interpret the result
         predicted_label = "FAKE" if prediction[0][0] < 0.4 else "REAL"
-        confidence = prediction[0][0] if predicted_label == "FAKE" else 1 - prediction[0][0]
+        confidence = prediction[0][0]
         
         print(f"Prediction: {predicted_label} (Confidence: {confidence:.2f})")
         return {"label": predicted_label, "confidence": float(confidence)}

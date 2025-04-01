@@ -259,6 +259,7 @@ interface DynamicStatsProps {
   deepfakeDetection?: boolean;
   imageVerification?: boolean;
   textVerification?: boolean;
+  reason?: string;
   // Video analysis fields
   videoDeepfake?: boolean;
   audioDeepfake?: boolean;
@@ -272,6 +273,7 @@ export default function DynamicStats({
   result,
   confidence,
   type,
+  reason,
   contentVerification,
   deepfakeDetection,
   imageVerification,
@@ -316,70 +318,6 @@ export default function DynamicStats({
     isSourceLink: true,
     allSources: allSources,
   };
-
-  // Additional stats for image analysis
-  // const imageStats =
-  //   type === "image"
-  //     ? [
-  //         {
-  //           title: "Image Verification",
-  //           value: imageVerification ? "No Manipulation" : "Manipulated",
-  //           icon: imageVerification ? (
-  //             <CheckCircle className="w-4 h-4 text-green-500" />
-  //           ) : (
-  //             <XCircle className="w-4 h-4 text-red-500" />
-  //           ),
-  //           colSpan: 1,
-  //         },
-  //         {
-  //           title: "Text Verification",
-  //           value: textVerification ? "Accurate" : "Misleading",
-  //           icon: textVerification ? (
-  //             <CheckCircle className="w-4 h-4 text-green-500" />
-  //           ) : (
-  //             <XCircle className="w-4 h-4 text-red-500" />
-  //           ),
-  //           colSpan: 1,
-  //         },
-  //       ]
-  //     : [];
-
-  // Additional stats for video analysis
-  // const videoStats =
-  //   type === "video"
-  //     ? [
-  //         {
-  //           title: "Video Deepfake",
-  //           value: videoDeepfake ? "Detected" : "Not Detected",
-  //           icon: videoDeepfake ? (
-  //             <AlertTriangle className="w-4 h-4 text-red-500" />
-  //           ) : (
-  //             <CheckCircle className="w-4 h-4 text-green-500" />
-  //           ),
-  //           colSpan: 1,
-  //         },
-  //         {
-  //           title: "Audio Deepfake",
-  //           value: audioDeepfake ? "Detected" : "Not Detected",
-  //           icon: audioDeepfake ? (
-  //             <AlertTriangle className="w-4 h-4 text-red-500" />
-  //           ) : (
-  //             <CheckCircle className="w-4 h-4 text-green-500" />
-  //           ),
-  //           colSpan: 1,
-  //         },
-  //         {
-  //           title: "Audio Context",
-  //           value: audioContextVerification ? "Matches" : "Mismatched",
-  //           icon: audioContextVerification ? (
-  //             <CheckCircle className="w-4 h-4 text-green-500" />
-  //           ) : (
-  //             <XCircle className="w-4 h-4 text-red-500" />
-  //           ),
-  //           colSpan: 1,
-  //         },
-  //       ]
-  //     : [];
 
   // Combine stats based on type
   const stats = [
@@ -427,52 +365,55 @@ export default function DynamicStats({
                       {stat.value}
                     </a>
                   </div>
-
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-xs w-full flex items-center justify-center mt-2"
-                    onClick={() => setShowAllSources(!showAllSources)}
-                  >
-                    {showAllSources ? "Hide Sources" : "All Sources"}
-                    <ChevronDown
-                      className={`ml-1 h-3 w-3 transition-transform ${
-                        showAllSources ? "rotate-180" : ""
-                      }`}
-                    />
-                  </Button>
-
-                  <AnimatePresence>
-                    {showAllSources && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.3 }}
-                        className="overflow-hidden"
+                  {type !== "image" && (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs w-full flex items-center justify-center mt-2"
+                        onClick={() => setShowAllSources(!showAllSources)}
                       >
-                        <div className="pt-2 border-t border-border mt-2 space-y-2">
-                          {"allSources" in stat &&
-                            stat.allSources?.map((source, idx) => (
-                              <div
-                                key={idx}
-                                className="flex items-center text-xs text-blue-500 hover:underline"
-                              >
-                                <LinkIcon className="w-3 h-3 mr-1 inline flex-shrink-0" />
-                                <a
-                                  href={source}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="truncate"
-                                >
-                                  {source}
-                                </a>
-                              </div>
-                            ))}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                        {showAllSources ? "Hide Sources" : "All Sources"}
+                        <ChevronDown
+                          className={`ml-1 h-3 w-3 transition-transform ${
+                            showAllSources ? "rotate-180" : ""
+                          }`}
+                        />
+                      </Button>
+
+                      <AnimatePresence>
+                        {showAllSources && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.3 }}
+                            className="overflow-hidden"
+                          >
+                            <div className="pt-2 border-t border-border mt-2 space-y-2">
+                              {"allSources" in stat &&
+                                stat.allSources?.map((source, idx) => (
+                                  <div
+                                    key={idx}
+                                    className="flex items-center text-xs text-blue-500 hover:underline"
+                                  >
+                                    <LinkIcon className="w-3 h-3 mr-1 inline flex-shrink-0" />
+                                    <a
+                                      href={source}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="truncate"
+                                    >
+                                      {source}
+                                    </a>
+                                  </div>
+                                ))}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </>
+                  )}
                 </div>
               ) : (
                 <div className="text-sm">{stat.value}</div>
@@ -488,59 +429,78 @@ export default function DynamicStats({
           </Card>
         </motion.div>
       ))}
+
+      {/* Moved the reason section outside of the map function */}
+      {reason && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="md:col-span-4"
+        >
+          <Card className="w-full">
+            <CardHeader>
+              <CardTitle className="text-sm font-medium">Explanation</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-sm">{reason}</div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
     </div>
   );
-}
 
-function getTitle(type: string): string {
-  switch (type) {
-    case "video":
-      return "Overall Verification";
-    case "image":
-      return "Overall Verification";
-    default:
-      return "Fact Check Result";
+  function getTitle(type: string): string {
+    switch (type) {
+      case "video":
+        return "Overall Verification";
+      case "image":
+        return "Overall Verification";
+      default:
+        return "Fact Check Result";
+    }
   }
-}
 
-function getValue(type: string, result: boolean): string {
-  return type === "video" || type === "image"
-    ? result
-      ? "Authentic"
-      : "Manipulated"
-    : result
-    ? "True"
-    : "False";
-}
+  function getValue(type: string, result: boolean): string {
+    return type === "video" || type === "image"
+      ? result
+        ? "Authentic"
+        : "Manipulated"
+      : result
+      ? "True"
+      : "False";
+  }
 
-function getIcon(type: string, result: boolean) {
-  return type === "video" || type === "image" ? (
-    result ? (
+  function getIcon(type: string, result: boolean) {
+    return type === "video" || type === "image" ? (
+      result ? (
+        <CheckCircle className="w-4 h-4 text-green-500" />
+      ) : (
+        <AlertTriangle className="w-4 h-4 text-red-500" />
+      )
+    ) : result ? (
       <CheckCircle className="w-4 h-4 text-green-500" />
     ) : (
-      <AlertTriangle className="w-4 h-4 text-red-500" />
-    )
-  ) : result ? (
-    <CheckCircle className="w-4 h-4 text-green-500" />
-  ) : (
-    <XCircle className="w-4 h-4 text-red-500" />
-  );
-}
-
-function getInputTypeIcon(type: string) {
-  switch (type) {
-    case "video":
-      return <Video className="w-4 h-4 text-blue-500" />;
-    case "image":
-      return <ImageIcon className="w-4 h-4 text-blue-500" />;
-    default:
-      return <FileText className="w-4 h-4 text-blue-500" />;
+      <XCircle className="w-4 h-4 text-red-500" />
+    );
   }
-}
 
-function getConfidenceColor(confidence: number): string {
-  if (confidence >= 80) return "bg-green-500";
-  if (confidence >= 60) return "bg-yellow-500";
-  if (confidence >= 40) return "bg-orange-500";
-  return "bg-red-500";
+  function getInputTypeIcon(type: string) {
+    switch (type) {
+      case "video":
+        return <Video className="w-4 h-4 text-blue-500" />;
+      case "image":
+        return <ImageIcon className="w-4 h-4 text-blue-500" />;
+      default:
+        return <FileText className="w-4 h-4 text-blue-500" />;
+    }
+  }
+
+  function getConfidenceColor(confidence: number): string {
+    if (confidence >= 80) return "bg-green-500";
+    if (confidence >= 60) return "bg-yellow-500";
+    if (confidence >= 40) return "bg-orange-500";
+    return "bg-red-500";
+  }
 }

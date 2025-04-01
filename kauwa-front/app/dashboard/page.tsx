@@ -67,18 +67,12 @@ export default function Dashboard() {
         // data.result: [boolean, confidence, reason, labels]
         let confidence = data.result[1];
         const reason = data.result[2];
-        const allSource = data.result[6]
-          .filter((item) => item?.url) // Ensure item exists and has a 'url' property
-          .map((item) => item.url);
+        const allSource = Array.isArray(data.result[6]) // Check if data.result[6] exists and is an array
+          ? data.result[6]
+              .filter((item) => item && item.url) // Ensure item exists and has a 'url' property
+              .map((item) => item.url)
+          : [];
 
-        // console.log(allSource);
-
-        // console.log(allSource);
-
-        // console.log(allSource);
-
-        // console.log("All Source:", allSource);
-        // const label = data.result[4];
         if (reason === "Retrieved from knowledge graph") {
           confidence = 100;
         }
@@ -160,37 +154,36 @@ export default function Dashboard() {
         }
         // console.log("Sum:", sum, "Count:", count);
         // console.log("Sum:", sum, "Count:", count);
-        const avgScore = count > 0 ? Math.floor((sum / count) * 100) : 0;
+        // const avgScore = count > 0 ? Math.floor((sum / count) * 100) : 0;
         // console.log("Average similarity score:", avgScore);
         // console.log("Average similarity score:", avgScore);
         // Determine content verification based on "Parsed Verdict"
-        const verdict = imageResult["Image Analysis Detail"]["verdict"];
-        const imageRes = imageResult["Image context"][0]["verdict"];
+        const verdict = imageResult["Final Analysis"]["verdict"];
+        // const imageRes = imageResult["Image Analysis Detail"]["verdict"];
         // console.log("Image Result:", imageRes);
-        const imageResVerified =
-          imageRes && imageRes.toLowerCase() === "justified" ? true : false;
+        // const imageResVerified =
+        // imageRes && imageRes.toLowerCase() === "justified" ? true : false;
         // console.log("Image Result Verified:", imageResVerified);
         // const verdict = imageResult["Image Analysis Detail"]["verdict"];
         // const imageRes = imageResult["Image context"][0]["verdict"];
         // console.log("Image Result:", imageRes);
         // const imageResVerified =
-        imageRes && imageRes.toLowerCase() === "justified" ? true : false;
+        // imageRes && imageRes.toLowerCase() === "justified" ? true : false;
         // console.log("Image Result Verified:", imageResVerified);
         const contentVerified =
           verdict && verdict.toLowerCase() === "justified" ? true : false;
-
+        console.log("sourceLink:", imageResult["Text Reason"]);
         const result: FactCheckResult = {
           query,
           result: contentVerified,
-          confidence: avgScore,
+          confidence: imageResult["Text Reason"][1],
           type,
-          sourceLink: "Image Analysis Model",
-          reason: imageResult["Final Verdict (Image)"],
+          sourceLink: imageResult["Text Reason"][6],
+          reason: imageResult["Final Analysis"]["reason"],
           // reason: imageResult["Final Verdict (Image)"],
           contentVerification: contentVerified,
-          textVerification:
-            imageResult["Text Reason"]["verification"]["is_verified"],
-          imageVerification: imageResVerified,
+          textVerification: imageResult["Text Reason"][0],
+          // imageVerification: imageResVerified,
           // textVerification:
           // imageResult["Text Reason"]["verification"]["is_verified"],
           // imageVerification: imageResVerified,
@@ -248,7 +241,7 @@ export default function Dashboard() {
           confidence: videoResult.confidence * 100,
           type,
           sourceLink: data.transcriber_result.verification.source_link,
-          reason: "Deepfake detection", // You may expand on this if needed.
+          reason: data.transcriber_result.verification.reasoning, // You may expand on this if needed.
           // videoDeepfake : videoResult.label === "REAL",
           audioDeepfake: data.audio_result,
           audioContextVerification:

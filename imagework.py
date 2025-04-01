@@ -23,7 +23,7 @@ from datetime import datetime, date, time, timedelta
 from config import API_KEY, CSE_ID, GSE_API_KEY
 
 # Set up credentials for Google Cloud Vision
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = r"D:\PROJECTS\vision key\vision-key.json"
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = r"imageModel\\vision-key.json"
 
 
 
@@ -612,5 +612,5 @@ def predict(image_path):
     print("Final Analysis:", final_analysis)
     return json.dumps(result_data, indent=4)
 # result_data = predict(r"train.jpg")
-result_data=predict(r"test 3.jpg")
+# result_data=predict(r"test 3.jpg")
 # print(detect_web(r"imageOutput\article_0.jpg"))

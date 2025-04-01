@@ -96,7 +96,7 @@ class KnowledgeGraphManager:
             query,
             query_id=query_id,
             query_text=query_text,
-            is_true=verification_result['is_verfied'] == 'TRUE',
+            is_true=verification_result['is_verified'] == 'TRUE',
             confidence=float(verification_result['confidence']),
             verification_data=json.dumps(verification_result),
             label=verification_result["label"]
@@ -134,11 +134,15 @@ class KnowledgeGraphManager:
         #print("before processing query")
         result = self.verification_system.process_query(query)
         #print("result",result,result.keys())
+        print("KG MANAGER RESULT", result)
         verification_result = result["verification"]
+        
         all_sources = result["all_sources"]
         
         #print("after processing query Verification Result: ", verification_result, type(verification_result),verification_result.keys())
         boolean_result = verification_result['is_verified'] == 'TRUE'
+        print("boolean result", boolean_result, type(boolean_result))
+        
         #print("after processing query")
         confidence = float(verification_result['confidence'])
         reason = verification_result["reasoning"]
