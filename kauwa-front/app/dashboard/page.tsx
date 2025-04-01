@@ -27,6 +27,7 @@ interface FactCheckResult {
   videoDeepfake?: boolean;
   audioDeepfake?: boolean;
   audioContextVerification?: boolean;
+  allSources?: string[];
 }
 
 export default function Dashboard() {
@@ -62,10 +63,21 @@ export default function Dashboard() {
         // console.log("Response:", response);
         const data = await response.json();
         // console.log("Text Result:", data);
-        // console.log("Text Result:", data);
+        console.log("Text Result:", data);
         // data.result: [boolean, confidence, reason, labels]
         let confidence = data.result[1];
         const reason = data.result[2];
+        const allSource = data.result[6]
+          .filter((item) => item?.url) // Ensure item exists and has a 'url' property
+          .map((item) => item.url);
+
+        // console.log(allSource);
+
+        // console.log(allSource);
+
+        // console.log(allSource);
+
+        // console.log("All Source:", allSource);
         // const label = data.result[4];
         if (reason === "Retrieved from knowledge graph") {
           confidence = 100;
@@ -78,6 +90,7 @@ export default function Dashboard() {
           sourceLink: data.result[5],
           reason,
           type,
+          allSources: allSource,
         };
 
         setCurrentOutput(result);
@@ -223,10 +236,10 @@ export default function Dashboard() {
 
         const data = await response.json();
         console.log("====================================");
-        console.log(
-          "Data:",
-          data.transcriber_result?.verification?.is_verified
-        );
+        console.log("Video Data:", data.transcriber_result?.all_sources);
+        const allSource = data.transcriber_result?.all_sources
+          .filter((item) => item?.url) // Ensure item exists and has a 'url' property
+          .map((item) => item.url);
         const videoResult = data.deepfake_result;
         // console.log("Video Result:", videoResult);
         const result: FactCheckResult = {
@@ -243,6 +256,7 @@ export default function Dashboard() {
             data.transcriber_result?.verification?.is_verified === "TRUE"
               ? true
               : false,
+          allSources: allSource,
         };
 
         setCurrentOutput(result);
@@ -303,6 +317,7 @@ export default function Dashboard() {
                 reason={currentOutput.reason}
                 contentVerification={currentOutput.contentVerification}
                 deepfakeDetection={currentOutput.deepfakeDetection}
+                allSources={currentOutput.allSources}
               />
             </motion.div>
           )}

@@ -80,6 +80,8 @@ Instructions:
 6. Give true if the claim is partially or fully supported by the source text, otherwise give false
 7. Give the label for the query like sports , politics ,tech etc
 8. If the source says the claim or the claim in the video is deepfake then give false
+9. If multiple sources are available, prioritize the latest and most credible information.
+
 Provide output in this format:
 VERIFIED: [true/false]  (based on the reasoning)
 CONFIDENCE: [0 to 100]
@@ -204,7 +206,7 @@ LABEL: [label of the query]
 
         Output Format:
         Respond with your chosen VerificationResult index in the exact format below:
-        Provide output in this format (the output should be a single integer(index of the choosen one), no text or additional characters)(PLease dont halluciante):
+        Provide output in this format (the output should be a single integer(index of the choosen one), no text or additional characters)(Please don't halluciante):
         (A single integer between 0 and 4, ensuring a valid selection is always provided.)"""
 
         messages = [
