@@ -254,7 +254,7 @@ class VerificationAgent:
         translated_query=translator.translate(query)
         query=translated_query['translation']
         language=translated_query['language']
-        print("Inside process query check 2")
+        print("Inside process query check 2",query)
         if(language.lower()!= "english"):
             pass
 
@@ -369,17 +369,19 @@ class Translator:
         1. Detect the language of the input text.
         2. Translate it into English.
         3. Provide the output in this exact format:
+        4. If it is already in English, then return the same text and language as English.
         TRANSLATION: [translated text] {delimiter}  
         LANGUAGE: [original language] {delimiter}  
         """
         
         messages = [
-            {"role": "system", "content": "You are an expert translator."},
+            {"role": "system", "content": "You are an expert translator. Stick to the output instructions provided. Nothing extra!!"},
             {"role": "user", "content": prompt}
         ]
         
         try:
             response_text = self.groq_chat_completion(messages)
+            print("Translation response:_________________________>", response_text)
             return self._parse_response(response_text, delimiter)
         except Exception as e:
             return {

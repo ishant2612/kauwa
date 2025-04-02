@@ -14,7 +14,7 @@ interface FactCheckResult {
   contentVerification?: boolean;
   deepfakeDetection?: boolean;
   imageVerification?: boolean;
-  textVerification?: boolean;
+  textVerification?: string;
   // sourceLink?: string;
   videoDeepfake?: boolean;
   audioDeepfake?: boolean;
@@ -142,7 +142,8 @@ export default function FactCheckOutput({
                           <XCircle className="w-4 h-4 mr-1" />
                         )}
                         <span className="text-base font-medium">
-                          {output.textVerification ? "Accurate" : "Misleading"}
+                          <p>{output.textVerification}</p>
+                          {output.textVerification === "TRUE" ? "Accurate" : "Misleading"}
                         </span>
                       </div>
                     </div>
