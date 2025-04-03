@@ -233,7 +233,7 @@ class VerificationAgent:
             #print("response_text",response_text)
             index = self.extract_index(response_text)
             print("index",index)
-            res = verification_results[int(index)]
+            res = verification_results[0 if (int(index)>4 and int(index)<0) else int(index)]
             #res = self._parse_response(response_text)
             #print("res",res)
             return res
@@ -248,70 +248,76 @@ class VerificationAgent:
 
     def process_query(self, query: str, num_results: int = 5) -> dict:
         """Perform query processing: search, extract, and verify."""
-        # Perform Google search
         print("Inside process query check 1")
-        translator=Translator(api_key="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")
-        translated_query=translator.translate(query)
-        query=translated_query['translation']
-        language=translated_query['language']
-        print("Inside process query check 2",query)
-        if(language.lower()!= "english"):
+        translator = Translator(api_key="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")
+        translated_query = translator.translate(query)
+        query = translated_query['translation']
+        language = translated_query['language']
+        print("Inside process query check 2", query)
+
+        if language.lower() != "english":
             pass
 
-        search_results = self.google_search(query, num_results)
-        print("Inside process query check 3")
-        if not search_results:
-            return {'error': 'No results found'}
-        
-        # Extract content in parallel
         sources = []
-        url_mapping = {}  # Store URL corresponding to each source
-        with ThreadPoolExecutor(max_workers=5) as executor:
-            future_to_item = {
-                executor.submit(self.extract_clean_content, item['link']): item
-                for item in search_results
-            }
-            
-            for future in concurrent.futures.as_completed(future_to_item):
-                item = future_to_item[future]
-                try:
-                    content = future.result()
-                    if content:
-                        sources.append(content)
-                        url_mapping[content] = item['link']  # Store the URL
-                except Exception as e:
-                    print(f"Error processing {item['link']}: {e}")
-        
-        # Verify the claim
+        url_mapping = {}
+        max_attempts = 3  # Allow a few retries to get valid content
+        attempt = 0
+
+        while len(sources) < num_results and attempt < max_attempts:
+            search_results = self.google_search(query, num_results * 2)  # Fetch more results to compensate for failures
+            print(f"Inside process query check 3 - Attempt {attempt + 1}")
+
+            if not search_results:
+                return {'error': 'No results found'}
+
+            with ThreadPoolExecutor(max_workers=5) as executor:
+                future_to_item = {
+                    executor.submit(self.extract_clean_content, item['link']): item
+                    for item in search_results
+                }
+
+                for future in concurrent.futures.as_completed(future_to_item):
+                    item = future_to_item[future]
+                    try:
+                        content = future.result()
+                        if content:  # Only add non-empty results
+                            sources.append(content)
+                            url_mapping[content] = item['link']
+                        if len(sources) >= num_results:  # Stop once we have enough valid results
+                            break
+                    except Exception as e:
+                        print(f"Error processing {item['link']}: {e}")
+
+            attempt += 1
+
+        if not sources:
+            return {'error': 'No valid results found'}
+
         print("Inside process query check 4")
         verification_results = self.batch_verify(query, sources)
         print("Inside process query check 5")
-        # Attach corresponding URLs
-        #print("URL MAPPINGS: ",url_mapping)
+
         for result, source in zip(verification_results, sources):
             result.source_url = url_mapping.get(source, "Unknown")
-            #print("SOURCE URL: ",result)
-
-        #print("VERIFICATION RESULTS: ",verification_results)
 
         last_conf = 0
         mcr = None
         print("Inside process query check 5")
-        # Select the best verification result
+
         for result in verification_results:
             if result.is_verified and result.confidence >= last_conf:
                 mcr = result
                 last_conf = result.confidence
+
         print("Inside process query check 6")
-        # If all results are false, use the best false one
+
         if not mcr:
             mcr = self.get_best_false_mcr(verification_results)
 
-        print("MCR: ",mcr)
-        print("\n VERIFICATION RESULTS: ",verification_results)
+        print("MCR: ", mcr)
+        print("\n VERIFICATION RESULTS: ", verification_results)
         print("\n")
-        print("Inside process query check 6")
-        # Format results
+
         return {
             'verification': {
                 'is_verified': 'TRUE' if mcr and mcr.is_verified else 'FALSE',
@@ -327,6 +333,7 @@ class VerificationAgent:
                 for result in verification_results
             ]
         }
+
 
 
 
