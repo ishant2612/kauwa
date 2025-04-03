@@ -204,9 +204,9 @@ export default function FactCheckOutput({
                       </h4>
                       <div
                         className={`flex items-center ${
-                          output.audioDeepfake == false
-                            ? "text-red-500"
-                            : "text-green-500"
+                          output.audioDeepfake
+                            ? "text-green-500"
+                            : "text-red-500"
                         }`}
                       >
                         {output.audioDeepfake ? (
@@ -215,7 +215,11 @@ export default function FactCheckOutput({
                           <CheckCircle className="w-4 h-4 mr-1" />
                         )}
                         <span className="text-base font-medium">
-                          {output.audioDeepfake == false ? "Deepfake" : "Real"}
+                          {output.audioDeepfake !== undefined
+                          ? output.audioDeepfake ? 
+                              "Real" 
+                              : "Deepfake"
+                            : "No Audio Found"}
                         </span>
                       </div>
                     </div>
@@ -227,20 +231,22 @@ export default function FactCheckOutput({
                       </h4>
                       <div
                         className={`flex items-center ${
-                          output.audioContextVerification
+                          output.audioContextVerification === "TRUE"
                             ? "text-green-500"
                             : "text-red-500"
                         }`}
                       >
-                        {output.audioContextVerification ? (
+                        {output.audioContextVerification === "TRUE" ? (
                           <CheckCircle className="w-4 h-4 mr-1" />
                         ) : (
                           <XCircle className="w-4 h-4 mr-1" />
                         )}
                         <span className="text-base font-medium">
                           {output.audioContextVerification
-                            ? "Valid"
-                            : "Invalid"}
+                            ? output.audioContextVerification === "TRUE"
+                              ? <p>Accurate</p>
+                              : <p>Misleading</p>
+                            : <p>No Audio Found</p>}
                         </span>
                       </div>
                     </div>

@@ -230,6 +230,7 @@ export default function Dashboard() {
         const data = await response.json();
         // console.log("====================================");
         // console.log("Video Data:", data.transcriber_result?.all_sources);
+        console.log("transcriber_result:", data);
         const allSource =
           data.transcriber_result?.all_sources &&
           Array.isArray(data.transcriber_result.all_sources)
@@ -237,24 +238,28 @@ export default function Dashboard() {
                 .filter((item) => item?.url)
                 .map((item) => item.url)
             : ["No sources available"];
+        console.log("All Sources:", allSource);
         const videoResult = data.deepfake_result;
         // console.log("Video Result:", videoResult);
+        if(data.audio_result === "No Audio to Extract")
+          data.audio_result = undefined;
         const result: FactCheckResult = {
           query,
           result: videoResult.label === "REAL",
           confidence: videoResult.confidence * 100,
           type,
           sourceLink:
-            data.transcriber_result.verification.source_link ||
+            data.transcriber_result?.verification?.source_link ||
             "No source link found",
           reason:
-            data.transcriber_result.verification.reasoning || "No reason found", // You may expand on this if needed.
+            data.transcriber_result?.verification?.reasoning , // You may expand on this if needed.
           // videoDeepfake : videoResult.label === "REAL",
-          audioDeepfake: data.audio_result || "No audio result found",
+          audioDeepfake: data.audio_result,
           audioContextVerification:
             data.transcriber_result?.verification?.is_verified,
           allSources: allSource,
         };
+        console.log("Video  Final Result:", result);
 
         setCurrentOutput(result);
         setPreviousOutputs((prev) => [result, ...prev.slice(0, 4)]);
