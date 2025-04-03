@@ -128,7 +128,8 @@ class KnowledgeGraphManager:
                 print(f"Error adding to graph: {e}")
     def verify_query(self, query):
         if self.driver:
-            existing_truth = self.get_query_truth_value(query)
+            smallCaseQuery = query.lower()
+            existing_truth = self.get_query_truth_value(smallCaseQuery)
             if existing_truth is not None:
                 return existing_truth, 1.0, "Retrieved from knowledge graph", "", "Knowlede Graph"
         #print("before processing query")
@@ -153,7 +154,8 @@ class KnowledgeGraphManager:
         # print(boolean_result, confidence, reason, quotes, labels)
         
         if self.driver and boolean_result:
-            self.add_query_to_graph(query, verification_result)
+            smallCaseQuery = query.lower()
+            self.add_query_to_graph(smallCaseQuery, verification_result)
 
         return boolean_result, confidence, reason, quotes, labels, source_link , all_sources
 

@@ -532,6 +532,7 @@ def predict(image_path):
     
     # Extract OCR text from the original image.
     extracted_text = extract_text(image_path)
+    #extracted_text = "RCB defeats CSK after 17 years at Chepauk."
     result_data["Extracted OCR Text"] = extracted_text
     if extracted_text:
         agent = VerificationAgent(api_key=API_KEY, cse_id=CSE_ID, gse_api_key=GSE_API_KEY)
@@ -611,6 +612,6 @@ def predict(image_path):
     result_data["Final Analysis"] = final_analysis
     print("Final Analysis:", final_analysis)
     return json.dumps(result_data, indent=4)
-# result_data = predict(r"train.jpg")
+#result_data = predict(r"rcb_rvcj.jpg")
 # result_data=predict(r"test 3.jpg")
 # print(detect_web(r"imageOutput\article_0.jpg"))
