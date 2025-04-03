@@ -9,6 +9,14 @@ import requests
 from bs4 import BeautifulSoup
 import trafilatura
 from groq import Groq
+
+import logging
+
+# Configure logging
+logging.basicConfig(
+    format="\n\033[1;32m[LOG]\033[0m %(message)s",  # Green bold "[LOG]" for visibility
+    level=logging.INFO
+)
 # from multilingual import Translator
 @dataclass
 class VerificationResult:
@@ -249,14 +257,14 @@ class VerificationAgent:
     def process_query(self, query: str, num_results: int = 5) -> dict:
         """Perform query processing: search, extract, and verify."""
         print("Inside process query check 1")
-        translator = Translator(api_key="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")
-        translated_query = translator.translate(query)
-        query = translated_query['translation']
-        language = translated_query['language']
+        # translator = Translator(api_key="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")
+        # translated_query = translator.translate(query)
+        # query = translated_query['translation']
+        # language = translated_query['language']
         print("Inside process query check 2", query)
 
-        if language.lower() != "english":
-            pass
+        # if language.lower() != "english":
+        #     pass
 
         sources = []
         url_mapping = {}
@@ -264,6 +272,7 @@ class VerificationAgent:
         attempt = 0
 
         while len(sources) < num_results and attempt < max_attempts:
+            print("inside while loop")
             search_results = self.google_search(query, num_results * 2)  # Fetch more results to compensate for failures
             print(f"Inside process query check 3 - Attempt {attempt + 1}")
 
@@ -333,6 +342,41 @@ class VerificationAgent:
                 for result in verification_results
             ]
         }
+
+
+    def translate_and_process_query(self, query: str, num_results: int = 5) -> dict:
+        logging.info(f"Received query: {query}")
+
+        translator = Translator(api_key="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")
+        translated_query_apiRes = translator.translate(query)
+        translated_query = translated_query_apiRes['translation']
+        language = translated_query_apiRes['language']
+
+        logging.info(f"Detected language: {language}")
+        logging.info(f"Translated query: {translated_query}")
+
+        translated_query_result = self.process_query(translated_query) if language.lower() != "english" else None
+        og_lang_result = self.process_query(query)
+
+        verified_tq = translated_query_result and translated_query_result['verification']['is_verified'] == "TRUE"
+        verified_og = og_lang_result['verification']['is_verified'] == "TRUE"
+
+        confidence_tq = translated_query_result['verification']['confidence'] if translated_query_result else 0
+        confidence_og = og_lang_result['verification']['confidence']
+
+        logging.info(f"Original query verified: {verified_og}, Confidence: {confidence_og}")
+        logging.info(f"Translated query verified: {verified_tq}, Confidence: {confidence_tq}")
+
+        if verified_tq and verified_og:
+            result = translated_query_result if confidence_tq >= confidence_og else og_lang_result
+        elif verified_tq or verified_og:
+            result = translated_query_result if verified_tq else og_lang_result
+        else:
+            result = translated_query_result if confidence_tq >= confidence_og else og_lang_result
+
+        logging.info(f"Returning result from: {'Translated Query' if result == translated_query_result else 'Original Query'}")
+        return result
+
 
 
 

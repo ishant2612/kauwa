@@ -133,7 +133,7 @@ class KnowledgeGraphManager:
             if existing_truth is not None:
                 return existing_truth, 1.0, "Retrieved from knowledge graph", "", "Knowlede Graph"
         #print("before processing query")
-        result = self.verification_system.process_query(query)
+        result = self.verification_system.translate_and_process_query(query)
         #print("result",result,result.keys())
         print("KG MANAGER RESULT", result)
         verification_result = result["verification"]
