@@ -17,13 +17,15 @@ from groq import Groq
 import trafilatura
 from verification.enhanced_search_system import VerificationAgent
 from datetime import datetime, date, time, timedelta
+from vid_context import check_youtube_url
+from concurrent.futures import ThreadPoolExecutor
 # from verification.multilingual import Translator
 
 
 from config import API_KEY, CSE_ID, GSE_API_KEY
 
 # Set up credentials for Google Cloud Vision
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = r"imageModel\\vision-key.json"
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = r"D:\PROJECTS\vision key\vision-key.json"
 
 
 
@@ -158,27 +160,67 @@ def process_url_and_compare(original_image_path, url):
 
 
 
+import requests
+from bs4 import BeautifulSoup
+import trafilatura
+
 def extract_clean_content(url: str) -> str:
-    """Extract clean text content from a URL."""
+    """Extract the first 200-300 words of clean text content from a news URL."""
     
     try:
-        # Use Trafilatura for content extraction
+        # Attempt to fetch and extract using Trafilatura
         downloaded = trafilatura.fetch_url(url)
-        content = trafilatura.extract(downloaded, include_tables=False)
-        print("------------------------------------------------------------------++++++++++++++++++++++++++++")
-        # print(content)
-        if not content:
-            # Fallback to BeautifulSoup
-            response = requests.get(url, timeout=10)
-            soup = BeautifulSoup(response.text, 'html.parser')
-            for element in soup(['script', 'style', 'nav', 'header', 'footer']):
-                element.decompose()
-            main_content = soup.find('article') or soup.find('main') or soup.find('body')
-            content = ' '.join(main_content.stripped_strings) if main_content else ''
-        return content.strip()
+        if downloaded:
+            content = trafilatura.extract(downloaded, include_tables=False)
+            if content:
+                words = content.split()
+                return ' '.join(words[:300])  # Limit to first 300 words
+
+        # Fallback to BeautifulSoup if Trafilatura fails
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+        response = requests.get(url, headers=headers, timeout=5)
+        response.raise_for_status()  # Ensure we catch HTTP errors
+
+        soup = BeautifulSoup(response.text, 'html.parser')
+
+        # Remove unwanted elements
+        for element in soup(['script', 'style', 'nav', 'header', 'footer']):
+            element.decompose()
+
+        # Extract content from article, main, or body
+        main_content = soup.find('article') or soup.find('main') or soup.find('body')
+        content = ' '.join(main_content.stripped_strings) if main_content else ''
+
+        words = content.split()
+        return ' '.join(words[:300])  # Limit to first 300 words
+
+    except requests.RequestException as e:
+        print(f"Request error extracting content from {url}: {e}")
     except Exception as e:
         print(f"Error extracting content from {url}: {e}")
-        return ""
+
+    return ""
+
+def extract_from_multiple_urls(urls: list, max_threads=5) -> dict:
+    """Extract content from multiple URLs concurrently using multithreading."""
+    
+    results = {}
+    with ThreadPoolExecutor(max_threads) as executor:
+        future_to_url = {executor.submit(extract_clean_content, url): url for url in urls}
+        
+        for future in future_to_url:
+            url = future_to_url[future]
+            try:
+                results[url] = future.result()
+            except Exception as e:
+                print(f"Error processing {url}: {e}")
+                results[url] = ""
+
+    return results
+
+
+
+
 
 from groq import Groq
 import os
@@ -287,7 +329,7 @@ Output only valid JSON (with no extra text or commentary) with the following key
     """.strip()
     
     if not api_key:
-        api_key = "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"
+        api_key = "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"
     return process_query(system_message, combined_prompt, api_key=api_key)
 
 
@@ -523,95 +565,103 @@ def extract_verification_result(data, as_list=False):
 import json
 import numpy as np
 
+import concurrent.futures
+import json
+
+def process_url(candidate, extracted_text, image_path, api_key):
+    """Process a single URL: check YouTube or validate claim."""
+    try:
+        if "youtube" in candidate:
+            print("YouTube video detected--------------------->.", candidate)
+            raw_response = check_youtube_url(url=candidate, claim=extracted_text)
+        else:
+            raw_response = process_claim(image_path, candidate, api_key=api_key)
+
+        # Extract JSON from response
+        response_json = extract_json(raw_response)
+        verdict = response_json.get("verdict", "").lower()
+        context_detail = response_json.get("context", "No detailed reason provided")
+
+        return {
+            "url": candidate,
+            "verdict": verdict,
+            "context": context_detail,
+            "raw_response": response_json
+        }
+    except Exception as e:
+        return {
+            "url": candidate,
+            "error": f"Error processing URL: {str(e)}"
+        }
+
 def predict(image_path):
+    """Predict function optimized with multithreading."""
     result_data = {}
-    
-    # 1. Initialization
-    image_context = []  # List to store detailed reasons from image-based analysis
-    text_reasons = []   # List to store detailed reasons from text-based analysis
-    
-    # Extract OCR text from the original image.
+    image_context = []
+    text_reasons = []
+
+    # 1. Extract OCR Text
     extracted_text = extract_text(image_path)
-    #extracted_text = "RCB defeats CSK after 17 years at Chepauk."
     result_data["Extracted OCR Text"] = extracted_text
     if extracted_text:
         agent = VerificationAgent(api_key=API_KEY, cse_id=CSE_ID, gse_api_key=GSE_API_KEY)
         text_result = agent.translate_and_process_query(extracted_text)
-        text_reasons=extract_verification_result(text_result, as_list=True)
+        text_reasons = extract_verification_result(text_result, as_list=True)
         print(text_result)
         print(text_reasons)
-    # Crop the image for further processing.
+    # 2. Crop Image for Processing
     cropped_paths = crop_image(image_path)
     result_data["Cropped image paths"] = cropped_paths
-    
-    # 2. Process image-based analysis
-    if cropped_paths:
-        first_cropped = cropped_paths[0]
-        
-        # Detect web URLs using the cropped image.
-        detected_urls = detect_web(first_cropped)[:]
-        # result_data["Detected URLs from cropped image"] = detected_urls
-        # print(result_data)
-        # Compute similarity scores for each URL.
-        # Each candidate is a tuple of (url, similarity_score)
-        # candidates = [
-        #     url, float(sim) if isinstance(sim, np.float32) else sim)
-        #     for url, sim in [process_url_and_compare(first_cropped, url) for url in detected_urls]
-        # ]
-        # result_data["Similarity scores"] = candidates
-        
-        # Iterate over each candidate.
-        api_key = "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"  # or use environment variable
-        for candidate in detected_urls:
-            # url_candidate, sim_score = candidate
-            # if url_candidate and sim_score is not None and sim_score >= 0.70:
-            raw_response = process_claim(image_path, candidate, api_key=api_key)
-                
-                # Extract JSON from the raw response
-            try:
-                response_json = extract_json(raw_response)
-            except Exception as e:
-                image_context.append({
-                    "url": candidate,
-                    "error": f"Error extracting JSON: {str(e)}"
-                })
-                continue
-                
-            verdict = response_json.get("verdict", "").lower()
-            context_detail = response_json.get("context", "No detailed reason provided")
-                
-            image_context.append({
-                "url": candidate,
-                "verdict": verdict,
-                "context": context_detail
-                })
-                
-                # Early termination if verdict is clearly justified
-            if verdict in ["justified", "supported"]:
-                result_data["Final Verdict (Image)"] = "The claim is supported (justified) based on image analysis."
-                result_data["Image Analysis Detail"] = response_json
-                    # Optionally, you might break out of the loop here if you only want one successful candidate.
-                break
-    else:
+
+    if not cropped_paths:
         result_data["Error"] = "No cropped images available for image-based processing."
-    
-    # 3. Process text-based analysis (using Google search on the extracted OCR text)
-    # Current date and time
+        return json.dumps(result_data, indent=4)
 
+    # 3. Detect URLs from Cropped Images
+    detected_urls = []
+    for path in cropped_paths:
+        if len(detected_urls) < 5:
+            detected_urls.extend(detect_web(path))
+        else:
+            break
 
-    
-        
-  
+    result_data["Detected URLs from cropped image"] = detected_urls
+    print(result_data)
+
+    # 4. Process URLs in Parallel
+    api_key = "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"
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        future_to_url = {
+            executor.submit(process_url, candidate, extracted_text, image_path, api_key): candidate
+            for candidate in detected_urls
+        }
+
+        for future in concurrent.futures.as_completed(future_to_url):
+            try:
+                result = future.result()
+                image_context.append(result)
+
+                # Early termination if a justified claim is found
+                if result.get("verdict") in ["justified", "supported"]:
+                    result_data["Final Verdict (Image)"] = "The claim is supported (justified) based on image analysis."
+                    result_data["Image Analysis Detail"] = result["raw_response"]
+                    break
+            except Exception as e:
+                print(f"Error processing URL: {e}")
+
+    # 5. Process Text-Based Analysis (if required)
     result_data["Image context"] = image_context
     result_data["Text Reason"] = text_reasons
-    print("Image context:", image_context)
-    print("Text Reasons:", text_reasons)
-    # 4. Call final_boss to perform the multifaceted analysis based on both reason lists.
+
+    # 6. Perform Final Analysis
     final_analysis = final_boss(image_context, text_reasons, extracted_text)
-    final_analysis= extract_json(final_analysis)
+    final_analysis = extract_json(final_analysis)
     result_data["Final Analysis"] = final_analysis
+
     print("Final Analysis:", final_analysis)
     return json.dumps(result_data, indent=4)
-#result_data = predict(r"rcb_rvcj.jpg")
-# result_data=predict(r"test 3.jpg")
-# print(detect_web(r"imageOutput\article_0.jpg"))
+
+# Run the prediction
+result_data = predict(r"rcb_rvcj.jpg")
+print(result_data)
+
