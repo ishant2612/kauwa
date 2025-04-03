@@ -375,8 +375,10 @@ class Translator:
         Instructions:
         1. Detect the language of the input text.
         2. Translate it into English.
-        3. Provide the output in this exact format:
+        3. Provide the output in this exact format dont use any extra explantion of word just the output:
         4. If it is already in English, then return the same text and language as English.
+        5. Clean the query removem any giberish, correct any spelling error if found only keep the uniformity of the main idea of the statement alive.
+        6. Make the Translation a google searchable text to verify the original text input. 
         TRANSLATION: [translated text] {delimiter}  
         LANGUAGE: [original language] {delimiter}  
         """
