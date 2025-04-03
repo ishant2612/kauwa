@@ -26,7 +26,7 @@ interface FactCheckResult {
   textVerification?: boolean;
   videoDeepfake?: boolean;
   audioDeepfake?: boolean;
-  audioContextVerification?: boolean;
+  audioContextVerification: string;
   allSources?: string[];
 }
 
@@ -228,11 +228,15 @@ export default function Dashboard() {
         }
 
         const data = await response.json();
-        console.log("====================================");
-        console.log("Video Data:", data.transcriber_result?.all_sources);
-        const allSource = data.transcriber_result?.all_sources
-          .filter((item) => item?.url) // Ensure item exists and has a 'url' property
-          .map((item) => item.url);
+        // console.log("====================================");
+        // console.log("Video Data:", data.transcriber_result?.all_sources);
+        const allSource =
+          data.transcriber_result?.all_sources &&
+          Array.isArray(data.transcriber_result.all_sources)
+            ? data.transcriber_result.all_sources
+                .filter((item) => item?.url)
+                .map((item) => item.url)
+            : ["No sources available"];
         const videoResult = data.deepfake_result;
         // console.log("Video Result:", videoResult);
         const result: FactCheckResult = {
@@ -240,15 +244,15 @@ export default function Dashboard() {
           result: videoResult.label === "REAL",
           confidence: videoResult.confidence * 100,
           type,
-          sourceLink: data.transcriber_result.verification.source_link,
-          reason: data.transcriber_result.verification.reasoning, // You may expand on this if needed.
+          sourceLink:
+            data.transcriber_result.verification.source_link ||
+            "No source link found",
+          reason:
+            data.transcriber_result.verification.reasoning || "No reason found", // You may expand on this if needed.
           // videoDeepfake : videoResult.label === "REAL",
-          audioDeepfake: data.audio_result,
+          audioDeepfake: data.audio_result || "No audio result found",
           audioContextVerification:
-            data.transcriber_result?.verification?.is_verified &&
-            data.transcriber_result?.verification?.is_verified === "TRUE"
-              ? true
-              : false,
+            data.transcriber_result?.verification?.is_verified,
           allSources: allSource,
         };
 

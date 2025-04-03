@@ -2,12 +2,8 @@ from flask import Flask, request, jsonify
 import json
 from flask_cors import CORS
 import os
-from moviepy.video.io.VideoFileClip import VideoFileClip
 from imagework import predict
 from deepfake.deepfake_api import DeepfakeVideo
-from mtcnn import MTCNN
-import librosa
-import whisper
 from config import API_KEY, CSE_ID, URI, USERNAME, PASSWORD, GSE_API_KEY
 from IntegratingAll import KnowledgeGraphManager
 from aiAudioDetector.ai_audio_detector import AudioDetector
@@ -37,58 +33,7 @@ def initialize_kg_manager():
         print(f"Neo4j connection failed: {e}")
         kg_manager = KnowledgeGraphManager()  # Initialize without Neo4j
         neo4j_connected = False
-
-#Audio extraction from video
-
-
-# def extract_audio(video_file):
-#     # Ensure video file is saved properly
-#     if not os.path.exists(video_file):
-#         raise FileNotFoundError(f"Video file not found: {video_file}")
-
-#     # Define output audio path
-#     audio_path = os.path.splitext(video_file)[0] + ".wav"
-
-#     # Load video and extract audio
-#     video = VideoFileClip(video_file)
-#     video.audio.write_audiofile(audio_path, codec="pcm_s16le", fps=16000)
-
-#     return audio_path  # Return extracted audio path
- # Return extracted audio file path
  
-def extract_audio(video_file):
-    # Ensure video file is saved properly
-    if not os.path.exists(video_file):
-        raise FileNotFoundError(f"Video file not found: {video_file}")
-
-    # Define output audio path (same base name with .wav extension)
-    audio_path = os.path.splitext(video_file)[0] + ".wav"
-
-    # Use a context manager to ensure the clip is closed after processing
-    with VideoFileClip(video_file) as video:
-        video.audio.write_audiofile(audio_path, codec="pcm_s16le", fps=16000)
-
-    return audio_path
-
-
-# Example usage
-# extract_audio("input_video.mp4", "extracted_audio.wav")
-# transcribing audio
-
-
-
-def load_audio_librosa(audio_path, sr=16000):
-    """ Load audio file using librosa instead of FFmpeg """
-    audio, _ = librosa.load(audio_path, sr=sr, mono=True)  # Ensure mono audio
-    return np.array(audio, dtype=np.float32)
-
-def transcribe_audio(audio_path):
-    """ Transcribe audio using Whisper without FFmpeg """
-    model = whisper.load_model("base")  # Load Whisper model
-    audio = load_audio_librosa(audio_path)  # Use librosa to load audio
-    result = model.transcribe(audio)
-    return result["text"]
-
 
 
 def predict_image(image_path):
@@ -108,28 +53,6 @@ def process_input():
       - Text verification (expects JSON with a "query" key)
       - Deepfake detection (expects a file upload with key "video" or "image")
     """
-    # If a video file is provided, process it with the deepfake model.
-    # if "video" in request.files:
-    #     video = request.files["video"]
-        
-        
-    #     if not video:
-    #         return jsonify({"error": "No video file uploaded"}), 400
-    #     dv = DeepfakeVideo()
-    #     audio = AudioDetector("ai audio model\wav2vec2_finetuned")
-    #     audio_path = extract_audio(video)
-    #     audio_res = audio.predict_audio(audio_path)
-    #     video_path = f"temp_{video.filename}"
-    #     video.save(video_path)
-        
-    #     result = dv.predict_video(video_path)
-    #     if os.path.exists(video_path):
-    #         os.remove(video_path)
-    #     print("Result of deepfake", result)
-    #     print("Result of audio", audio_res)
-    #     if os.path.exists(audio_path):
-    #         os.remove(audio_path)
-    #     return jsonify({"deepfake_result": result})
     
     
     if "video" in request.files:
@@ -156,22 +79,23 @@ def process_input():
         result = dv.predict_video(video_path)
         
         # Try transcription; if it fails or returns empty, set trans_res accordingly
-        try:
-            audio_path = extract_audio(video_path)
+        if audio.video_has_audio(video_path):
+            audio_path = audio.extract_audio(video_path)
 
             # Predict results
             audio_res = audio.predict_audio(audio_path)
-            transcribed = transcribe_audio(audio_path)
+            transcribed = audio.transcribe_audio(audio_path)
             if not transcribed or transcribed.strip() == "":
                 trans_res = "No Transcribe"
             else:
                 trans_res = agent.process_query(transcribed)
+                
             if os.path.exists(audio_path):
                 os.remove(audio_path)
 
             print("Transcriber result:", trans_res)
-        except Exception as e:
-            print("Transcription error:", e)
+        else:
+            
             trans_res = "No Transcribe"
 
         # Cleanup temp files

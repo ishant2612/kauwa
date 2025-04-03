@@ -18,7 +18,7 @@ interface FactCheckResult {
   // sourceLink?: string;
   videoDeepfake?: boolean;
   audioDeepfake?: boolean;
-  audioContextVerification?: boolean;
+  audioContextVerification: string;
 }
 
 interface FactCheckOutputProps {
