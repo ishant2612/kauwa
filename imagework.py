@@ -25,7 +25,7 @@ from concurrent.futures import ThreadPoolExecutor
 from config import API_KEY, CSE_ID, GSE_API_KEY
 
 # Set up credentials for Google Cloud Vision
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = r"imageModel\vision-key.json"
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = r"imageModel/vision-key.json"
 
 
 
