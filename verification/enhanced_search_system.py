@@ -357,7 +357,7 @@ class VerificationAgent:
 
         translated_query_result = self.process_query(translated_query) if language.lower() != "english" else None
         og_lang_result = self.process_query(query)
-        print("og_lang_result",og_lang_result)
+        logging.info("og_lang_result",og_lang_result)
         verified_tq = translated_query_result and translated_query_result['verification']['is_verified'] == "TRUE"
         verified_og = og_lang_result['verification']['is_verified'] == "TRUE"
 
