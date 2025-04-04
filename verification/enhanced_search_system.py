@@ -198,7 +198,9 @@ class VerificationAgent:
                 main_content = soup.find('article') or soup.find('main') or soup.find('body')
                 content = ' '.join(main_content.stripped_strings) if main_content else ''
             
-            return content.strip()
+            # Trim to top 500 words
+            words = content.strip().split()
+            return ' '.join(words[:500])
         except Exception as e:
             print(f"Error extracting content from {url}: {e}")
             return ""
@@ -206,7 +208,7 @@ class VerificationAgent:
 
     def extract_index(self,response: str) -> str:
         match = re.search(r"</think>\s*(\d+)", response)
-        return match.group(1) if match else ""
+        return match.group(1) if match else "0"
 
     def get_best_false_mcr(self, verification_results: list[VerificationResult]) -> VerificationResult:
         prompt = """You are an AI designed to evaluate multiple failed verification attempts and select the most reliable failure explanation. You will be given five VerificationResult objects where all have is_verified=False. Your task is to choose the best one based on its reasoning, confidence, and relevant features, while avoiding results that contain error messages as source text.
@@ -356,9 +358,13 @@ class VerificationAgent:
         logging.info(f"Translated query: {translated_query}")
 
         translated_query_result = self.process_query(translated_query) if language.lower() != "english" else None
+        need_translation = False
         og_lang_result = self.process_query(query)
         print("og_lang_result",og_lang_result)
-        verified_tq = translated_query_result and translated_query_result['verification']['is_verified'] == "TRUE"
+            
+        verified_tq = None
+        if(translated_query_result is not None):
+            verified_tq = translated_query_result['verification']['is_verified'] == "TRUE"
         verified_og = og_lang_result['verification']['is_verified'] == "TRUE"
 
         confidence_tq = translated_query_result['verification']['confidence'] if translated_query_result else 0
@@ -368,11 +374,20 @@ class VerificationAgent:
         logging.info(f"Translated query verified: {verified_tq}, Confidence: {confidence_tq}")
 
         if verified_tq and verified_og:
-            result = translated_query_result if confidence_tq >= confidence_og else og_lang_result
+            if(verified_tq is None):
+                result = og_lang_result
+            else:
+                result = translated_query_result if confidence_tq >= confidence_og else og_lang_result
         elif verified_tq or verified_og:
-            result = translated_query_result if verified_tq else og_lang_result
+            if(verified_tq is None):
+                result = og_lang_result
+            else:
+                result = og_lang_result if verified_og else translated_query_result
         else:
-            result = translated_query_result if confidence_tq >= confidence_og else og_lang_result
+            if(verified_tq is None):
+                result = og_lang_result
+            else:
+                result = og_lang_result if (confidence_og >= confidence_tq) else translated_query_result
 
         logging.info(f"Returning result from: {'Translated Query' if result == translated_query_result else 'Original Query'}")
         return result
