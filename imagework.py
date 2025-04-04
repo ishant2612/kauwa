@@ -25,7 +25,7 @@ from concurrent.futures import ThreadPoolExecutor
 from config import API_KEY, CSE_ID, GSE_API_KEY
 
 # Set up credentials for Google Cloud Vision
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = r"D:\PROJECTS\vision key\vision-key.json"
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = r"imageModel\vision-key.json"
 
 
 
@@ -605,7 +605,7 @@ def predict(image_path):
     result_data["Extracted OCR Text"] = extracted_text
     if extracted_text:
         agent = VerificationAgent(api_key=API_KEY, cse_id=CSE_ID, gse_api_key=GSE_API_KEY)
-        text_result = agent.translate_and_process_query(extracted_text)
+        text_result = agent.process_query(extracted_text)
         text_reasons = extract_verification_result(text_result, as_list=True)
         print(text_result)
         print(text_reasons)
@@ -662,6 +662,6 @@ def predict(image_path):
     return json.dumps(result_data, indent=4)
 
 # Run the prediction
-result_data = predict(r"rcb_rvcj.jpg")
-print(result_data)
+# result_data = predict(r"rcb_rvcj.jpg")
+# print(result_data)
 
