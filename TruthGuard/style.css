@@ -1,24 +1,138 @@
+/* Additional custom styles */
 body {
-  font-family: Arial, sans-serif;
+  font-family: 'Montserrat', Arial, sans-serif;
   text-align: center;
+  background-color: #f8fafc;
+  transition: all 0.3s ease;
+}
+
+.container {
+  max-width: 100%;
+  margin: 0 auto;
 }
 
 button {
-  margin: 10px;
-  padding: 10px;
-  border: none;
-  background-color: #4CAF50;
-  color: white;
-  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
 }
 
-button:hover {
-  background-color: #45a049;
+button:after {
+  content: "";
+  background: rgba(255, 255, 255, 0.3);
+  display: block;
+  position: absolute;
+  border-radius: 50%;
+  padding-top: 240%;
+  padding-left: 240%;
+  margin-top: -120%;
+  margin-left: -120%;
+  opacity: 0;
+  transition: all 0.8s;
 }
 
-#result {
-  margin-top: 20px;
-  padding: 10px;
-  border: 1px solid #ccc;
-  background-color: #f9f9f9;
+button:active:after {
+  padding: 0;
+  margin: 0;
+  opacity: 1;
+  transition: 0s;
+}
+
+/* Custom scrollbar for results */
+.max-h-64::-webkit-scrollbar {
+  width: 6px;
+}
+
+.max-h-64::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.max-h-64::-webkit-scrollbar-thumb {
+  background: #c5d8f7;
+  border-radius: 10px;
+}
+
+.max-h-64::-webkit-scrollbar-thumb:hover {
+  background: #3b82f6;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.tab-content.active {
+  animation: fadeIn 0.4s ease-in-out;
+}
+
+/* Focus styles */
+textarea:focus, input:focus {
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+}
+
+/* Result item hover effects */
+.result-item {
+  transition: all 0.2s ease;
+}
+
+.result-item:hover {
+  transform: translateX(3px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* Confidence badge styles */
+.confidence-badge {
+  transition: all 0.3s ease;
+}
+
+/* Loading animation */
+@keyframes pulse {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+#resultContainer {
+  transition: all 0.3s ease;
+}
+
+/* Dark mode support (optional) */
+@media (prefers-color-scheme: dark) {
+  .dark-mode-enabled body {
+    background-color: #1a202c;
+    color: #e2e8f0;
+  }
+  
+  .dark-mode-enabled .bg-white {
+    background-color: #2d3748;
+  }
+  
+  .dark-mode-enabled .text-gray-700 {
+    color: #e2e8f0;
+  }
+  
+  .dark-mode-enabled .border-gray-100,
+  .dark-mode-enabled .border-gray-200 {
+    border-color: #4a5568;
+  }
+  
+  .dark-mode-enabled input,
+  .dark-mode-enabled textarea {
+    background-color: #2d3748;
+    color: #e2e8f0;
+    border-color: #4a5568;
+  }
 }
