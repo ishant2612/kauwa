@@ -100,7 +100,7 @@ export default function FactCheckOutput({
 
                   <div className="grid grid-cols-2 gap-4 mt-4">
                     {/* Image Verification */}
-                    <div className="bg-secondary/30 p-3 rounded-lg">
+                    {/* <div className="bg-secondary/30 p-3 rounded-lg">
                       <h4 className="font-medium text-sm mb-1">
                         Image Verification:
                       </h4>
@@ -122,7 +122,7 @@ export default function FactCheckOutput({
                             : "Manipulated"}
                         </span>
                       </div>
-                    </div>
+                    </div> */}
 
                     {/* Text Verification */}
                     <div className="bg-secondary/30 p-3 rounded-lg">
@@ -142,8 +142,10 @@ export default function FactCheckOutput({
                           <XCircle className="w-4 h-4 mr-1" />
                         )}
                         <span className="text-base font-medium">
-                          <p>{output.textVerification}</p>
-                          {output.textVerification === "TRUE" ? "Accurate" : "Misleading"}
+                          {/* <p>{output.textVerification}</p> */}
+                          {output.textVerification === "TRUE"
+                            ? "Accurate"
+                            : "Misleading"}
                         </span>
                       </div>
                     </div>
@@ -216,8 +218,8 @@ export default function FactCheckOutput({
                         )}
                         <span className="text-base font-medium">
                           {output.audioDeepfake !== undefined
-                          ? output.audioDeepfake ? 
-                              "Real" 
+                            ? output.audioDeepfake
+                              ? "Real"
                               : "Deepfake"
                             : "No Audio Found"}
                         </span>
@@ -242,11 +244,15 @@ export default function FactCheckOutput({
                           <XCircle className="w-4 h-4 mr-1" />
                         )}
                         <span className="text-base font-medium">
-                          {output.audioContextVerification
-                            ? output.audioContextVerification === "TRUE"
-                              ? <p>Accurate</p>
-                              : <p>Misleading</p>
-                            : <p>No Audio Found</p>}
+                          {output.audioContextVerification ? (
+                            output.audioContextVerification === "TRUE" ? (
+                              <p>Accurate</p>
+                            ) : (
+                              <p>Misleading</p>
+                            )
+                          ) : (
+                            <p>No Audio Found</p>
+                          )}
                         </span>
                       </div>
                     </div>

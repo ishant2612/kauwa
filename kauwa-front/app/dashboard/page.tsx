@@ -17,7 +17,7 @@ interface FactCheckResult {
   query: string;
   result: boolean;
   confidence: number;
-  type: "text" | "video" | "image";
+  type: "text" | "video" | "image" | "live-broadcast";
   sourceLink?: string;
   reason?: string;
   contentVerification?: boolean;
@@ -41,9 +41,12 @@ export default function Dashboard() {
 
   const handleFactCheck = async (
     query: string,
-    type: "text" | "video" | "image",
+    type: "text" | "video" | "image" | "live-broadcast",
     file?: File
   ) => {
+    if (type === "live-broadcast") {
+      return;
+    }
     setIsExpanded(true);
     setIsProcessing(true);
     setCurrentOutput(null);
@@ -241,7 +244,7 @@ export default function Dashboard() {
         console.log("All Sources:", allSource);
         const videoResult = data.deepfake_result;
         // console.log("Video Result:", videoResult);
-        if(data.audio_result === "No Audio to Extract")
+        if (data.audio_result === "No Audio to Extract")
           data.audio_result = undefined;
         const result: FactCheckResult = {
           query,
@@ -251,8 +254,7 @@ export default function Dashboard() {
           sourceLink:
             data.transcriber_result?.verification?.source_link ||
             "No source link found",
-          reason:
-            data.transcriber_result?.verification?.reasoning , // You may expand on this if needed.
+          reason: data.transcriber_result?.verification?.reasoning, // You may expand on this if needed.
           // videoDeepfake : videoResult.label === "REAL",
           audioDeepfake: data.audio_result,
           audioContextVerification:

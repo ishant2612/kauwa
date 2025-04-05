@@ -9,20 +9,20 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Video, ImageIcon } from "lucide-react";
-
+import LiveBroadcastAnalysis from "../LiveBroadcastAnalysis/LiveBroadcastAnalysis";
 interface FactCheckInputProps {
   onFactCheck: (
     query: string,
-    type: "text" | "video" | "image",
+    type: "text" | "video" | "image" | "live-broadcast",
     file?: File
   ) => void;
 }
 
 export default function FactCheckInput({ onFactCheck }: FactCheckInputProps) {
   const [query, setQuery] = useState("");
-  const [activeTab, setActiveTab] = useState<"text" | "video" | "image">(
-    "text"
-  );
+  const [activeTab, setActiveTab] = useState<
+    "text" | "video" | "image" | "live-broadcast"
+  >("text");
   const [file, setFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
@@ -34,6 +34,7 @@ export default function FactCheckInput({ onFactCheck }: FactCheckInputProps) {
       onFactCheck(file.name, activeTab, file);
       setFile(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
+    } else if (activeTab === "live-broadcast") {
     }
   };
 
@@ -58,7 +59,11 @@ export default function FactCheckInput({ onFactCheck }: FactCheckInputProps) {
   }, [activeTab]);
 
   return (
-    <Card className="w-full h-full flex flex-col">
+    <Card
+      className={`w-full h-full flex flex-col ${
+        activeTab === "live-broadcast" ? "min-h-[600px]" : ""
+      }`}
+    >
       <CardHeader>
         <CardTitle>Fact Check Input</CardTitle>
       </CardHeader>
@@ -67,13 +72,14 @@ export default function FactCheckInput({ onFactCheck }: FactCheckInputProps) {
           defaultValue="text"
           className="w-full flex-grow flex flex-col"
           onValueChange={(value) =>
-            setActiveTab(value as "text" | "video" | "image")
+            setActiveTab(value as "text" | "video" | "image" | "live-broadcast")
           }
         >
-          <TabsList className="grid w-full grid-cols-3 mb-4">
+          <TabsList className="grid w-full grid-cols-4 mb-4">
             <TabsTrigger value="text">Text</TabsTrigger>
             <TabsTrigger value="video">Video</TabsTrigger>
             <TabsTrigger value="image">Image</TabsTrigger>
+            <TabsTrigger value="live-broadcast">Live Broadcast</TabsTrigger>
           </TabsList>
           <TabsContent value="text" className="flex-grow flex flex-col">
             <Textarea
@@ -107,10 +113,18 @@ export default function FactCheckInput({ onFactCheck }: FactCheckInputProps) {
               fileType="Image"
             />
           </TabsContent>
+          <TabsContent
+            value="live-broadcast"
+            className="flex-grow flex flex-col"
+          >
+            <LiveBroadcastAnalysis onFactCheck={onFactCheck} />
+          </TabsContent>
         </Tabs>
-        <Button className="w-full mt-auto" onClick={handleFactCheck}>
-          {activeTab === "text" ? "Fact Check" : `Analyze ${activeTab}`}
-        </Button>
+        {activeTab !== "live-broadcast" && (
+          <Button className="w-full mt-auto" onClick={handleFactCheck}>
+            {activeTab === "text" ? "Fact Check" : `Analyze ${activeTab}`}
+          </Button>
+        )}
       </CardContent>
     </Card>
   );
