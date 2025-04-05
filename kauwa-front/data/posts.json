@@ -1,0 +1,32 @@
+[
+  {
+    "id": "1743797491705",
+    "author": "Varun",
+    "content": "Narendra Modi is the PM of America",
+    "type": "text",
+    "mediaUrl": "",
+    "createdAt": "2025-04-04T20:11:31.705Z",
+    "voteCount": 7,
+    "verified": false
+  },
+  {
+    "id": "1743797510068",
+    "author": "Varun 2",
+    "content": "Narendra Modi is the PM of India",
+    "type": "text",
+    "mediaUrl": "",
+    "createdAt": "2025-04-04T20:11:50.068Z",
+    "voteCount": 8,
+    "verified": true
+  },
+  {
+    "id": "1743797912660",
+    "author": "Mahendra Singh Dhoni",
+    "content": "MI player praying to win this IPL season",
+    "type": "image",
+    "mediaUrl": "https://scontent.fdel1-3.fna.fbcdn.net/v/t39.30808-6/488188386_1223149776048774_3285212386998239667_n.jpg?_nc_cat=111&ccb=1-7&_nc_sid=833d8c&_nc_ohc=XJ0nk2EyJdAQ7kNvwFMSbBq&_nc_oc=AdnQol4rIzk_89pZRAxfyZpG9s4fbn3WN3kIjfdoGQzLU8Eo09_6RadFMThFZzMXV8Y&_nc_zt=23&_nc_ht=scontent.fdel1-3.fna&_nc_gid=uSctD_rLabUAg2_0jCZHfg&oh=00_AYE7AC7L93IY9yGi0IyJgre1L4VMG1PnP0f-ZmZ-WGP9jA&oe=67F616FE",
+    "createdAt": "2025-04-04T20:18:32.660Z",
+    "voteCount": 1,
+    "verified": false
+  }
+]
