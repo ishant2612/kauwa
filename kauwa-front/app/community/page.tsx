@@ -42,7 +42,9 @@ export default function Community() {
     setPosts((prev) =>
       prev
         .map((post) =>
-          post.id === id ? { ...post, voteCount: post.voteCount + voteChange } : post
+          post.id === id
+            ? { ...post, voteCount: post.voteCount + voteChange }
+            : post
         )
         .sort((a, b) => b.voteCount - a.voteCount)
     );
@@ -63,9 +65,14 @@ export default function Community() {
         });
 
         const verifyData = await verifyRes.json();
-        console.log("Verification response:", verifyData,verifyData.result, verifyData.result[0]);
+        console.log(
+          "Verification response:",
+          verifyData,
+          verifyData.result,
+          verifyData.result[0]
+        );
         verifiedStatus = verifyData.result[0] ?? null;
-        console.log(verifiedStatus)
+        console.log(verifiedStatus);
       } catch (error) {
         console.error("Verification failed:", error);
       }
@@ -79,11 +86,14 @@ export default function Community() {
     });
 
     const data = await res.json();
-    setPosts((prev) => [data, ...prev].sort((a, b) => b.voteCount - a.voteCount));
+    setPosts((prev) =>
+      [data, ...prev].sort((a, b) => b.voteCount - a.voteCount)
+    );
     setNewPost({ author: "", content: "", type: "text", mediaUrl: "" });
   };
 
-  if (loading) return <p className="text-center mt-10 text-gray-500">Loading posts...</p>;
+  if (loading)
+    return <p className="text-center mt-10 text-gray-500">Loading posts...</p>;
 
   return (
     <div className="max-w-2xl mx-auto px-4 pt-24">
@@ -93,7 +103,9 @@ export default function Community() {
 
       {/* New Post Form */}
       <div className="bg-white shadow-md rounded-lg p-6 mb-10 border border-gray-200">
-        <h2 className="text-lg font-semibold mb-4 text-gray-700">Create a Post</h2>
+        <h2 className="text-lg font-semibold mb-4 text-gray-700">
+          Create a Post
+        </h2>
         <input
           type="text"
           placeholder="Your name"
@@ -111,7 +123,10 @@ export default function Community() {
         <select
           value={newPost.type}
           onChange={(e) =>
-            setNewPost({ ...newPost, type: e.target.value as "text" | "image" | "video" })
+            setNewPost({
+              ...newPost,
+              type: e.target.value as "text" | "image" | "video",
+            })
           }
           className="w-full mb-3 px-4 py-2 border text-gray-800 border-gray-300 rounded"
         >
@@ -124,7 +139,9 @@ export default function Community() {
             type="text"
             placeholder="Media URL"
             value={newPost.mediaUrl}
-            onChange={(e) => setNewPost({ ...newPost, mediaUrl: e.target.value })}
+            onChange={(e) =>
+              setNewPost({ ...newPost, mediaUrl: e.target.value })
+            }
             className="w-full mb-3 px-4 py-2 border text-gray-800 border-gray-300 rounded"
           />
         )}
@@ -139,7 +156,9 @@ export default function Community() {
 
       {/* Posts List */}
       {posts.length === 0 ? (
-        <p className="text-center text-gray-500">No posts yet. Be the first to post!</p>
+        <p className="text-center text-gray-500">
+          No posts yet. Be the first to post!
+        </p>
       ) : (
         posts.map((post) => (
           <div
@@ -162,7 +181,11 @@ export default function Community() {
               />
             )}
             {post.type === "video" && post.mediaUrl && (
-              <video src={post.mediaUrl} controls className="rounded mb-3 max-h-64 w-full" />
+              <video
+                src={post.mediaUrl}
+                controls
+                className="rounded mb-3 max-h-64 w-full"
+              />
             )}
 
             <div className="flex items-center justify-between">
@@ -179,7 +202,9 @@ export default function Community() {
                 >
                   👎
                 </button>
-                <span className="text-gray-600 text-sm">Votes: {post.voteCount}</span>
+                <span className="text-gray-600 text-sm">
+                  Votes: {post.voteCount}
+                </span>
               </div>
               {post.verified !== null && (
                 <span
