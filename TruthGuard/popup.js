@@ -136,7 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const ocrResponse = await fetch('https://api.ocr.space/parse/image', {
                 method: 'POST',
                 headers: {
-                    'apikey': 'K87227845288957'  // Replace with actual OCR API key
+                    'apikey': 'your key here'  // Replace with actual OCR API key
                 },
                 body: formData
             });
