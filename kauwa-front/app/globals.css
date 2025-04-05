@@ -41,9 +41,9 @@
   body {
     @apply text-foreground;
     background: hsla(223, 84%, 5%, 1);
-    background: radial-gradient(circle, hsla(223, 84%, 5%, 1) 0%, hsla(200, 4%, 31%, 1) 100%);
+    /* background: radial-gradient(circle, hsla(223, 84%, 5%, 1) 0%, hsla(200, 4%, 31%, 1) 100%);
     background: -moz-radial-gradient(circle, hsla(223, 84%, 5%, 1) 0%, hsla(200, 4%, 31%, 1) 100%);
-    background: -webkit-radial-gradient(circle, hsla(223, 84%, 5%, 1) 0%, hsla(200, 4%, 31%, 1) 100%);
+    background: -webkit-radial-gradient(circle, hsla(223, 84%, 5%, 1) 0%, hsla(200, 4%, 31%, 1) 100%); */
     filter: progid: DXImageTransform.Microsoft.gradient( startColorstr="#020817", endColorstr="#4B4F51", GradientType=1 );
   }
 }
