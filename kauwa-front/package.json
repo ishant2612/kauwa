@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@deepgram/sdk": "^3.11.3",
     "@hookform/resolvers": "^3.9.1",
     "@nivo/bar": "^0.88.0",
     "@radix-ui/react-accordion": "^1.2.2",
@@ -62,7 +63,7 @@
     "rechart": "^0.0.1",
     "recharts": "2.15.0",
     "sonner": "^1.7.1",
-    "tailwind-merge": "^2.5.5",
+    "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^0.9.6",
     "zod": "^3.24.1"
