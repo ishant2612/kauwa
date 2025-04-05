@@ -1,525 +1,208 @@
-// "use client";
-
-// import { useState, useRef } from "react";
-// import { Button } from "@/components/ui/button";
-// import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-// import { Mic, MicOff, Radio, CheckCircle, XCircle, Clock } from "lucide-react";
-// import { Spinner } from "../Spinner/Spinner";
-// import { motion } from "framer-motion";
-// import React from "react";
-
-// interface LiveBroadcastAnalysisProps {
-//   onFactCheck: (
-//     query: string,
-//     type: "text" | "video" | "image" | "live-broadcast",
-//     file?: File
-//   ) => void;
-// }
-
-// interface TranscriptChunk {
-//   id: string;
-//   text: string;
-//   isValid: boolean | null;
-//   confidence: number | null;
-//   timestamp: string;
-//   explanation?: string;
-// }
-
-// export default function LiveBroadcastAnalysis({
-//   onFactCheck,
-// }: LiveBroadcastAnalysisProps) {
-//   const [isSharing, setIsSharing] = useState(false);
-//   const [isTranscribing, setIsTranscribing] = useState(false);
-//   const [transcript, setTranscript] = useState("");
-//   const [transcriptChunks, setTranscriptChunks] = useState<TranscriptChunk[]>(
-//     []
-//   );
-//   const [stream, setStream] = useState<MediaStream | null>(null);
-//   const recognitionRef = useRef<SpeechRecognition | null>(null);
-//   const videoRef = useRef<HTMLVideoElement>(null);
-
-//   // Start screen (or tab) sharing using getDisplayMedia and attach the stream to a video element
-//   const startScreenSharing = async () => {
-//     try {
-//       // Request both video and audio from the user
-//       const mediaStream = await navigator.mediaDevices.getDisplayMedia({
-//         video: true,
-//         audio: true,
-//       });
-//       setStream(mediaStream);
-//       setIsSharing(true);
-
-//       // Attach the shared stream to the video element so the user can see it
-//       if (videoRef.current) {
-//         videoRef.current.srcObject = mediaStream;
-//         videoRef.current
-//           .play()
-//           .catch((err) =>
-//             console.error("Error playing shared screen video:", err)
-//           );
-//       }
-
-//       // Start transcription using Web Speech API (if supported)
-//       // Note: Browser support may vary. You may need to include vendor prefixes.
-//       const SpeechRecognition =
-//         (window as any).SpeechRecognition ||
-//         (window as any).webkitSpeechRecognition;
-//       if (SpeechRecognition) {
-//         const recognition = new SpeechRecognition();
-//         recognition.continuous = true;
-//         recognition.interimResults = true;
-//         recognition.lang = "en-US";
-
-//         recognition.onresult = (event: SpeechRecognitionEvent) => {
-//           let interimTranscript = "";
-//           for (let i = event.resultIndex; i < event.results.length; i++) {
-//             const result = event.results[i];
-//             interimTranscript += result[0].transcript;
-//           }
-//           setTranscript(interimTranscript);
-//           // You can also split and validate transcript chunks as needed:
-//           // e.g. call validateChunk on a chunk after a pause in speech.
-//         };
-
-//         recognition.onerror = (event: any) => {
-//           console.error("Speech recognition error", event);
-//         };
-
-//         recognition.start();
-//         recognitionRef.current = recognition;
-//         setIsTranscribing(true);
-//       } else {
-//         console.warn("SpeechRecognition is not supported in this browser.");
-//       }
-//     } catch (error) {
-//       console.error("Error starting screen sharing:", error);
-//     }
-//   };
-
-//   // Stop screen sharing and transcription
-//   const stopScreenSharing = () => {
-//     if (stream) {
-//       // Stop all tracks
-//       stream.getTracks().forEach((track) => track.stop());
-//     }
-//     setStream(null);
-//     setIsSharing(false);
-//     setIsTranscribing(false);
-//     setTranscript("");
-//     setTranscriptChunks([]);
-//     if (recognitionRef.current) {
-//       recognitionRef.current.stop();
-//       recognitionRef.current = null;
-//     }
-//   };
-
-//   // Simulated function to validate transcript chunks (update as needed)
-//   const validateChunk = (chunkId: string) => {
-//     setTranscriptChunks((prev) =>
-//       prev.map((chunk) => {
-//         if (chunk.id === chunkId) {
-//           const containsInvalidContent =
-//             chunk.text.toLowerCase().includes("false") ||
-//             chunk.text.toLowerCase().includes("fraud");
-//           return {
-//             ...chunk,
-//             isValid: !containsInvalidContent,
-//             confidence: Math.floor(Math.random() * 30) + 70, // Random confidence between 70-100%
-//           };
-//         }
-//         return chunk;
-//       })
-//     );
-//   };
-
-//   // Optional: Simulate adding transcript chunks periodically
-//   // In a real-world scenario, you might split the live transcription stream into chunks
-//   const simulateChunking = () => {
-//     // Your implementation to periodically split transcript into chunks,
-//     // validate them, and update the transcriptChunks state.
-//   };
-
-//   return (
-//     <div className="flex flex-col h-full gap-4">
-//       {/* Top section with tab sharing and live transcription side by side */}
-//       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-grow">
-//         {/* Tab sharing section */}
-//         <Card className="p-4 flex flex-col">
-//           <h3 className="text-lg font-medium mb-4">Tab Sharing</h3>
-//           <div className="flex-grow flex flex-col items-center justify-center bg-secondary/30 rounded-lg p-4">
-//             {isSharing ? (
-//               <div className="w-full h-full flex flex-col">
-//                 {/* Display the shared screen in a video element */}
-//                 <div className="relative w-full h-48 bg-black rounded-lg overflow-hidden">
-//                   <video
-//                     ref={videoRef}
-//                     className="w-full h-full object-cover"
-//                     autoPlay
-//                     playsInline
-//                     muted
-//                   />
-//                   <div className="absolute top-4 left-4 text-white text-sm">
-//                     Live Broadcast
-//                   </div>
-//                 </div>
-//                 <Button
-//                   variant="destructive"
-//                   className="mt-4 self-center"
-//                   onClick={stopScreenSharing}
-//                 >
-//                   <MicOff className="mr-2 h-4 w-4" /> Stop Sharing
-//                 </Button>
-//               </div>
-//             ) : (
-//               <div className="text-center">
-//                 <Radio className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-//                 <p className="text-sm text-gray-500 mb-4">
-//                   Share any browser tab for live transcription and
-//                   fact-checking.
-//                 </p>
-//                 <Button onClick={startScreenSharing}>
-//                   <Mic className="mr-2 h-4 w-4" /> Start Tab Sharing
-//                 </Button>
-//               </div>
-//             )}
-//           </div>
-//         </Card>
-
-//         {/* Live transcription section */}
-//         <Card className="p-4 flex flex-col">
-//           <h3 className="text-lg font-medium mb-4">Live Transcription</h3>
-//           <div className="flex-grow overflow-y-auto bg-secondary/30 rounded-lg p-4 font-mono text-sm">
-//             {isTranscribing ? (
-//               <>
-//                 {transcript}
-//                 <span className="inline-block w-2 h-4 bg-primary ml-1 animate-pulse"></span>
-//               </>
-//             ) : (
-//               <div className="text-gray-500 h-full flex items-center justify-center">
-//                 Transcription will appear here once sharing starts...
-//               </div>
-//             )}
-//           </div>
-//         </Card>
-//       </div>
-
-//       {/* Bottom section with validation output spanning full width */}
-//       <Card className="p-4 flex-grow">
-//         <h3 className="text-lg font-medium mb-4">Fact Check Results</h3>
-//         <div className="max-h-64 overflow-y-auto">
-//           {transcriptChunks.length > 0 ? (
-//             <div className="space-y-3">
-//               {transcriptChunks.map((chunk) => (
-//                 <motion.div
-//                   key={chunk.id}
-//                   initial={{ opacity: 0, y: 10 }}
-//                   animate={{ opacity: 1, y: 0 }}
-//                   className="p-3 bg-secondary/30 rounded-lg"
-//                 >
-//                   <div className="flex justify-between items-start mb-2">
-//                     <div className="flex-grow">
-//                       <p className="text-sm font-medium">{chunk.text}</p>
-//                       <div className="flex items-center text-xs text-gray-500 mt-1">
-//                         <Clock className="h-3 w-3 mr-1" /> {chunk.timestamp}
-//                       </div>
-//                     </div>
-//                     <div className="ml-4 flex-shrink-0">
-//                       {chunk.isValid === null ? (
-//                         <span className="flex items-center text-yellow-500 text-xs">
-//                           <Spinner className="h-3 w-3 mr-1" /> Validating...
-//                         </span>
-//                       ) : chunk.isValid ? (
-//                         <span className="flex items-center text-green-500 text-xs">
-//                           <CheckCircle className="h-3 w-3 mr-1" /> Valid (
-//                           {chunk.confidence}%)
-//                         </span>
-//                       ) : (
-//                         <span className="flex items-center text-red-500 text-xs">
-//                           <XCircle className="h-3 w-3 mr-1" /> Invalid (
-//                           {chunk.confidence}%)
-//                         </span>
-//                       )}
-//                     </div>
-//                   </div>
-//                   {chunk.isValid !== null && (
-//                     <div className="mt-2 text-xs border-t border-gray-200 pt-2">
-//                       <span className="font-medium">Analysis: </span>
-//                       {chunk.explanation}
-//                     </div>
-//                   )}
-//                 </motion.div>
-//               ))}
-//             </div>
-//           ) : (
-//             <div className="text-gray-500 h-32 flex items-center justify-center">
-//               Fact-check results will appear here as content is analyzed...
-//             </div>
-//           )}
-//         </div>
-//       </Card>
-//     </div>
-//   );
-// }
-
 "use client";
 
-import { useState, useRef } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Mic, MicOff, Radio, CheckCircle, XCircle, Clock } from "lucide-react";
-import { Spinner } from "../Spinner/Spinner";
-import { motion } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
+import Groq, { toFile } from "groq-sdk";
 import React from "react";
+import ReactMarkdown from "react-markdown";
 
-interface LiveBroadcastAnalysisProps {
-  onFactCheck: (
-    query: string,
-    type: "text" | "video" | "image" | "live-broadcast",
-    file?: File
-  ) => void;
+interface DoubleString {
+  txt: string;
+  txt2: string;
 }
 
-interface TranscriptChunk {
-  id: string;
-  text: string;
-  isValid: boolean | null;
-  confidence: number | null;
-  timestamp: string;
-  explanation?: string;
-}
-
-export default function LiveBroadcastAnalysis({
-  onFactCheck,
-}: LiveBroadcastAnalysisProps) {
-  const [isSharing, setIsSharing] = useState(false);
-  const [isTranscribing, setIsTranscribing] = useState(false);
-  const [transcript, setTranscript] = useState("");
-  const [transcriptChunks, setTranscriptChunks] = useState<TranscriptChunk[]>(
-    []
-  );
+export default function ScreenShareTranscript() {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const [transcript, setTranscript] = useState<string>("");
+  const [incorrectTexts, setIncorrectTexts] = useState<Array<DoubleString>>([]);
+  const [stringBuffer, setBuffer] = useState<string>("");
+  let groq: Groq;
+  const astream = new MediaStream();
+  const arecorder = new MediaRecorder(astream);
 
-  // Start screen (or tab) sharing using getDisplayMedia and attach the stream to a video element
-  const startScreenSharing = async () => {
+  /////////////////////////////////////////////////////////////////////////////////////
+  async function verifyClaim(claim: string) {
+    const delimiter = "|||";
+  
+    const prompt = `
+      Verify if this claim is supported by the source text.
+  
+      Claim: ${claim}
+  
+      Instructions:
+      1. Analyze if the claim is true.
+      2. If the claim is supported or incomplete or you're unsure, return "true".
+      3. If you think the claim is incomplete, return "true". Only return false if you are certain.
+      4. If the claim is strongly contradicted, return "false" else return "true" in most of the cases.
+      5. Should be a single word answer(true/false).
+    `;
+  
+    const messages: Array<{ role: "system" | "user"; content: string; name?: string }> = [
+      { role: "system", content: "You are a precise fact verification system. You only give single word verdicy(true/false)" },
+      { role: "user", content: prompt }
+    ];
+  
     try {
-      const mediaStream = await navigator.mediaDevices.getDisplayMedia({
-        video: true,
-        audio: true,
+      const response = await groq.chat.completions.create({
+        model: "llama-3.3-70b-versatile", // or other models as needed
+        messages: messages,
+        temperature: 0.6,
+        top_p: 0.95
       });
-      setStream(mediaStream);
-      setIsSharing(true);
-      console.log("Media stream:", mediaStream);
-
-      // Use setTimeout to ensure videoRef is mounted
-      setTimeout(() => {
-        if (videoRef.current) {
-          videoRef.current.srcObject = mediaStream;
-          videoRef.current.muted = true;
-          videoRef.current
-            .play()
-            .then(() => console.log("Video is playing"))
-            .catch((e) => console.error("Video play error:", e));
-        } else {
-          console.warn("Video ref is null after delay");
-        }
-      }, 300); // small delay ensures ref is attached
-
-      // Speech Recognition Setup
-      const SpeechRecognition =
-        (window as any).SpeechRecognition ||
-        (window as any).webkitSpeechRecognition;
-      if (SpeechRecognition) {
-        const recognition = new SpeechRecognition();
-        recognition.continuous = true;
-        recognition.interimResults = true;
-        recognition.lang = "en-US";
-
-        recognition.onresult = (event: SpeechRecognitionEvent) => {
-          let interimTranscript = "";
-          for (let i = event.resultIndex; i < event.results.length; i++) {
-            const result = event.results[i];
-            interimTranscript += result[0].transcript;
-          }
-          setTranscript(interimTranscript);
-        };
-
-        recognition.onerror = (event: any) => {
-          console.error("Speech recognition error", event);
-        };
-
-        recognition.start();
-        recognitionRef.current = recognition;
-        setIsTranscribing(true);
-      } else {
-        console.warn("SpeechRecognition is not supported in this browser.");
-      }
+  
+      const responseText = response.choices[0].message?.content?.trim() || "";
+      console.log("Response text--->",responseText)
+      return responseText === "true";  // Only return true/false
     } catch (error) {
-      console.error("Error starting screen sharing:", error);
+      console.error("Error verifying claim:", error);
+      return false;  // If an error occurs, return false by default
     }
-  };
+  }
+  
+  /////////////////////////////////////////////////////////////////////////////////////
 
-  // Stop screen sharing and transcription
-  const stopScreenSharing = () => {
-    if (stream) {
-      // Stop all tracks
-      stream.getTracks().forEach((track) => track.stop());
-    }
-    setStream(null);
-    setIsSharing(false);
-    setIsTranscribing(false);
-    setTranscript("");
-    setTranscriptChunks([]);
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
-      recognitionRef.current = null;
-    }
-  };
+  useEffect(() => {
+    if (videoRef.current && stream) {
+      videoRef.current.srcObject = stream;
+      videoRef.current.muted = true;
+      groq = new Groq({
+        apiKey: "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",
+        dangerouslyAllowBrowser: true,
+      });
 
-  // Simulated function to validate transcript chunks (update as needed)
-  const validateChunk = (chunkId: string) => {
-    setTranscriptChunks((prev) =>
-      prev.map((chunk) => {
-        if (chunk.id === chunkId) {
-          const containsInvalidContent =
-            chunk.text.toLowerCase().includes("false") ||
-            chunk.text.toLowerCase().includes("fraud");
-          return {
-            ...chunk,
-            isValid: !containsInvalidContent,
-            confidence: Math.floor(Math.random() * 30) + 70, // Random confidence between 70-100%
-          };
+      
+      for (const track of stream.getAudioTracks()) {
+        astream.addTrack(track);
+      }
+
+      
+      arecorder.ondataavailable = (e) => {
+        transcribe(e.data, groq);
+      };
+
+      setInterval(() => {
+        if (!stream || stream.active === false) {
+          stopCapture();
+          return;
         }
-        return chunk;
-      })
-    );
+        if (arecorder.state == "recording") {
+          arecorder.stop();
+          arecorder.start();
+        }
+      }, 3000);
+    }
+  }, [stream]);
+
+  function stopCapture() {
+    if (videoRef?.current?.srcObject) {
+      let tracks = (videoRef.current.srcObject as MediaStream).getTracks();
+      tracks.forEach((track: MediaStreamTrack) => track.stop());
+      videoRef.current.srcObject = null;
+    }
+  }
+
+  const handleShareButton = () => {
+    stopCapture();
+    navigator.mediaDevices
+      .getDisplayMedia({ video: true, audio: true })
+      .then((cs) => setStream(cs))
+      .catch((err: any) => console.error(err));
   };
 
-  // Optional: Simulate adding transcript chunks periodically
-  // In a real-world scenario, you might split the live transcription stream into chunks
-  const simulateChunking = () => {
-    // Your implementation to periodically split transcript into chunks,
-    // validate them, and update the transcriptChunks state.
+  async function transcribe(blob: Blob, groq: Groq) {
+    const startTime = performance.now();
+    const response = await groq.audio.translations.create({
+      file: await toFile(blob, "audio.webm"),
+      model: "whisper-large-v3",
+      prompt: "",
+      response_format: "json",
+      temperature: 0,
+    });
+    const newTranscriptText = response.text;
+  
+    // Update the transcript state with the transcribed text
+    setTranscript((prevText) => {
+      return prevText + newTranscriptText;
+    });
+
+    // Verify the claim (transcription)
+    const isVerified = await verifyClaim(transcript);
+
+    if (!isVerified) {
+      // Flag the text as incorrect and color it red
+      setIncorrectTexts((prev) => [
+        ...prev,
+        { txt: newTranscriptText, txt2: "This claim was found to be "+isVerified+"." },
+      ]);
+    }
+  
+    return response;
+  }
+  
+  const endOfMessagesRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    endOfMessagesRef.current?.scrollIntoView({ behavior: "smooth" });
   };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [transcript]);
 
   return (
-    <div className="flex flex-col h-full gap-4">
-      {/* Top section with tab sharing and live transcription side by side */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-grow">
-        {/* Tab sharing section */}
-        <Card className="p-4 flex flex-col">
-          <h3 className="text-lg font-medium mb-4">Tab Sharing</h3>
-          <div className="flex-grow flex flex-col items-center justify-center bg-secondary/30 rounded-lg p-4">
-            {isSharing ? (
-              <div className="w-full h-full flex flex-col">
-                {/* Display the shared screen in a video element */}
-                <div className="relative w-full h-48 bg-black rounded-lg overflow-hidden">
-                  <video
-                    ref={videoRef}
-                    className="w-full h-full object-cover"
-                    autoPlay
-                    playsInline
-                  />
-                  <div className="absolute top-4 left-4 text-white text-sm">
-                    Live Broadcast
-                  </div>
-                </div>
-                <Button
-                  variant="destructive"
-                  className="mt-4 self-center"
-                  onClick={stopScreenSharing}
-                >
-                  <MicOff className="mr-2 h-4 w-4" /> Stop Sharing
-                </Button>
+    <div className="fullWrapper">
+      <div className="leftSide">
+        <div>
+          <button
+            onClick={handleShareButton}
+            className="shareButton"
+            type="submit"
+          >
+            <span>{stream ? "Change" : "Share"} Tab</span>
+          </button>
+        </div>
+        <div className="videoBox">
+          <video
+            ref={videoRef}
+            autoPlay
+            className="w-full h-full rounded-xl"
+            onPlay={() => {
+              if (arecorder.state === "paused") {
+                arecorder.resume();
+              } else {
+                arecorder.start();
+              }
+            }}
+            onPause={() => {
+              arecorder.pause();
+            }}
+            onEnded={() => {
+              arecorder.stop();
+            }}
+          />
+        </div>
+        <div className="ErrorTexts">
+          <div className="text-lg font-medium">Error Checking</div>
+          <div>
+            {incorrectTexts.map((text, index) => (
+              <div key={index}>
+                <div>Erroneous Statement: {text.txt}</div>
+                <p>{text.txt2}</p>
               </div>
-            ) : (
-              <div className="text-center">
-                <Radio className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                <p className="text-sm text-gray-500 mb-4">
-                  Share any browser tab for live transcription and
-                  fact-checking.
-                </p>
-                <Button onClick={startScreenSharing}>
-                  <Mic className="mr-2 h-4 w-4" /> Start Tab Sharing
-                </Button>
-              </div>
-            )}
+            ))}
           </div>
-        </Card>
-
-        {/* Live transcription section */}
-        <Card className="p-4 flex flex-col">
-          <h3 className="text-lg font-medium mb-4">Live Transcription</h3>
-          <div className="flex-grow overflow-y-auto bg-secondary/30 rounded-lg p-4 font-mono text-sm">
-            {isTranscribing ? (
-              <>
-                {transcript}
-                <span className="inline-block w-2 h-4 bg-primary ml-1 animate-pulse"></span>
-              </>
-            ) : (
-              <div className="text-gray-500 h-full flex items-center justify-center">
-                Transcription will appear here once sharing starts...
-              </div>
-            )}
-          </div>
-        </Card>
+        </div>
       </div>
 
-      {/* Bottom section with validation output spanning full width */}
-      <Card className="p-4 flex-grow">
-        <h3 className="text-lg font-medium mb-4">Fact Check Results</h3>
-        <div className="max-h-64 overflow-y-auto">
-          {transcriptChunks.length > 0 ? (
-            <div className="space-y-3">
-              {transcriptChunks.map((chunk) => (
-                <motion.div
-                  key={chunk.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="p-3 bg-secondary/30 rounded-lg"
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex-grow">
-                      <p className="text-sm font-medium">{chunk.text}</p>
-                      <div className="flex items-center text-xs text-gray-500 mt-1">
-                        <Clock className="h-3 w-3 mr-1" /> {chunk.timestamp}
-                      </div>
-                    </div>
-                    <div className="ml-4 flex-shrink-0">
-                      {chunk.isValid === null ? (
-                        <span className="flex items-center text-yellow-500 text-xs">
-                          <Spinner className="h-3 w-3 mr-1" /> Validating...
-                        </span>
-                      ) : chunk.isValid ? (
-                        <span className="flex items-center text-green-500 text-xs">
-                          <CheckCircle className="h-3 w-3 mr-1" /> Valid (
-                          {chunk.confidence}%)
-                        </span>
-                      ) : (
-                        <span className="flex items-center text-red-500 text-xs">
-                          <XCircle className="h-3 w-3 mr-1" /> Invalid (
-                          {chunk.confidence}%)
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  {chunk.isValid !== null && (
-                    <div className="mt-2 text-xs border-t border-gray-200 pt-2">
-                      <span className="font-medium">Analysis: </span>
-                      {chunk.explanation}
-                    </div>
-                  )}
-                </motion.div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-gray-500 h-32 flex items-center justify-center">
-              Fact-check results will appear here as content is analyzed...
-            </div>
-          )}
+      <div className="rightSide">
+        <div className="TranscriptBox">
+          <div className="text-lg font-medium">Transcript</div>
+          <div>
+            <p>{transcript}</p>
+            <div ref={endOfMessagesRef} />
+          </div>
         </div>
-      </Card>
+      </div>
     </div>
   );
 }

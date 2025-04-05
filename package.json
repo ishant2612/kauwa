@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "groq-sdk": "^0.19.0",
+    "react-markdown": "^10.1.0"
+  }
+}
