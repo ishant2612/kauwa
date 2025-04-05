@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   
     // API Configuration
-    const GSE_API_KEY = "AIzaSyC8Ue6Lat1UowH1LJu6Gq8VQxNCbXUqH2I";
+    const GSE_API_KEY = "your key here";
     const CSE_ID = "a1241cce56f6f4abb";
     const NUM_RESULTS = 10;
   
