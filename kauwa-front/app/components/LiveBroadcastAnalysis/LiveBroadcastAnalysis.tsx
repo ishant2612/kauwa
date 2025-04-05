@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Groq, { toFile } from "groq-sdk";
 import React from "react";
 import ReactMarkdown from "react-markdown";
+import { useDebouncedCallback } from "use-debounce";
 
 interface DoubleString {
   txt: string;
@@ -16,12 +17,52 @@ export default function ScreenShareTranscript() {
   const [transcript, setTranscript] = useState<string>("");
   const [incorrectTexts, setIncorrectTexts] = useState<Array<DoubleString>>([]);
   const [stringBuffer, setBuffer] = useState<string>("");
-  let groq: Groq;
+  const [sentenceBuffer, setSentenceBuffer] = useState<string[]>([]);
+  const seenSentences = new Set();
+  // let groq: Groq;
+  const groqRef = useRef<Groq | null>(null);
   const astream = new MediaStream();
   const arecorder = new MediaRecorder(astream);
 
   /////////////////////////////////////////////////////////////////////////////////////
+  const verifyBufferedSentences = useDebouncedCallback((buffer: string[]) => {
+    const paragraphSize = 4; // You can tweak this
+    const chunks: string[][] = [];
+  
+    // Create chunks of sentences for context-rich verification
+    for (let i = 0; i < buffer.length; i += paragraphSize) {
+      chunks.push(buffer.slice(i, i + paragraphSize));
+    }
+  
+    chunks.forEach((chunk) => {
+      const paragraph = chunk.join(" ").trim();
+  
+      if (paragraph.length < 20 || !/[a-zA-Z]{3,}/.test(paragraph)) return;
+  
+      verifyClaim(paragraph).then((isVerified) => {
+        if (!isVerified) {
+          // Flag each sentence in the failed paragraph
+          chunk.forEach((sentence) => {
+            setIncorrectTexts((prev) => [
+              ...prev,
+              {
+                txt: sentence,
+                txt2: "This claim was found to be false.",
+              },
+            ]);
+          });
+        }
+      });
+    });
+  }, 1500);
+
+  /////////////////////////////////////////////////////////////////////////////////////
   async function verifyClaim(claim: string) {
+    const groq = groqRef.current;
+    if (!groq) {
+      console.error("Groq client not initialized");
+      return false;
+    }
     const delimiter = "|||";
 
     const prompt = `
@@ -59,7 +100,7 @@ export default function ScreenShareTranscript() {
       });
 
       const responseText = response.choices[0].message?.content?.trim() || "";
-      console.log("Response text--->", responseText);
+      console.log("Response text--->", responseText, claim );
       return responseText === "true"; // Only return true/false
     } catch (error) {
       console.error("Error verifying claim:", error);
@@ -73,7 +114,7 @@ export default function ScreenShareTranscript() {
     if (videoRef.current && stream) {
       videoRef.current.srcObject = stream;
       videoRef.current.muted = true;
-      groq = new Groq({
+      groqRef.current = new Groq({
         apiKey: "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",
         dangerouslyAllowBrowser: true,
       });
@@ -83,7 +124,11 @@ export default function ScreenShareTranscript() {
       }
 
       arecorder.ondataavailable = (e) => {
-        transcribe(e.data, groq);
+        if (groqRef.current) {
+          transcribe(e.data, groqRef.current);
+        } else {
+          console.error("Groq client is not initialized");
+        }
       };
 
       setInterval(() => {
@@ -105,6 +150,10 @@ export default function ScreenShareTranscript() {
       tracks.forEach((track: MediaStreamTrack) => track.stop());
       videoRef.current.srcObject = null;
     }
+  
+    // Reset buffers only (keep transcript + incorrect texts)
+    setBuffer("");
+    setSentenceBuffer([]);
   }
 
   const handleShareButton = () => {
@@ -116,7 +165,6 @@ export default function ScreenShareTranscript() {
   };
 
   async function transcribe(blob: Blob, groq: Groq) {
-    const startTime = performance.now();
     const response = await groq.audio.translations.create({
       file: await toFile(blob, "audio.webm"),
       model: "whisper-large-v3",
@@ -124,95 +172,170 @@ export default function ScreenShareTranscript() {
       response_format: "json",
       temperature: 0,
     });
+  
     const newTranscriptText = response.text;
-
-    // Update the transcript state with the transcribed text
-    setTranscript((prevText) => {
-      return prevText + newTranscriptText;
+    const combined = stringBuffer + newTranscriptText;
+  
+    // 1. Extract full sentences and keep leftover
+    const { sentences, remainder } = extractSentences(combined);
+    setBuffer(remainder);
+    setTranscript((prevText) => prevText + newTranscriptText);
+  
+    // 2. Add new sentences to the buffer
+    setSentenceBuffer((prevBuffer) => {
+      const updatedBuffer = [...prevBuffer, ...sentences];
+      verifyBufferedSentences(updatedBuffer); // debounced processing
+      return []; // clear buffer
     });
-
-    // Verify the claim (transcription)
-    const isVerified = await verifyClaim(transcript);
-
-    if (!isVerified) {
-      // Flag the text as incorrect and color it red
-      setIncorrectTexts((prev) => [
-        ...prev,
-        {
-          txt: newTranscriptText,
-          txt2: "This claim was found to be " + isVerified + ".",
-        },
-      ]);
-    }
-
+    
+  
     return response;
+  }
+
+  // function extractSentences(text: string): { sentences: string[], remainder: string } {
+  //   const sentenceEndRegex = /([.!?])\s+/g;
+  //   let sentences: string[] = [];
+  //   let lastIndex = 0;
+  //   let match;
+  
+  //   while ((match = sentenceEndRegex.exec(text)) !== null) {
+  //     const endIndex = match.index + match[0].length;
+  //     const sentence = text.slice(lastIndex, endIndex).trim();
+  //     if (sentence) sentences.push(sentence);
+  //     lastIndex = endIndex;
+  //   }
+  
+  //   const remainder = text.slice(lastIndex).trim(); // leftover text
+  //   return { sentences, remainder };
+  // }
+
+  // BETTER VERSION BELOW
+  function extractSentences(text: string): { sentences: string[], remainder: string } {
+    if (typeof Intl === "undefined" || typeof Intl.Segmenter === "undefined") {
+      // fallback to basic regex if Intl.Segmenter isn't available
+      const sentenceEndRegex = /([.!?])\s+/g;
+      let sentences: string[] = [];
+      let lastIndex = 0;
+      let match;
+  
+      while ((match = sentenceEndRegex.exec(text)) !== null) {
+        const endIndex = match.index + match[0].length;
+        const sentence = text.slice(lastIndex, endIndex).trim();
+        if (sentence) sentences.push(sentence);
+        lastIndex = endIndex;
+      }
+  
+      const remainder = text.slice(lastIndex).trim(); // leftover text
+      return { sentences, remainder };
+    }
+  
+    // Better sentence segmentation using Intl.Segmenter
+    const segmenter = new Intl.Segmenter("en", { granularity: "sentence" });
+    const segments = Array.from(segmenter.segment(text));
+  
+    const sentences: string[] = [];
+    let remainder = "";
+  
+    for (let i = 0; i < segments.length; i++) {
+      const { segment, isWordLike } = segments[i];
+  
+      if (segment.trim().length === 0) continue;
+  
+      if (/[.?!]["']?$/.test(segment.trim())) {
+        sentences.push(segment.trim());
+      } else {
+        remainder += segment;
+      }
+    }
+  
+    return {
+      sentences,
+      remainder: remainder.trim(),
+    };
   }
 
   const endOfMessagesRef = useRef<HTMLDivElement>(null);
 
-  const scrollToBottom = () => {
-    endOfMessagesRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [transcript]);
+  // const scrollToBottom = () => {
+  //   if (!containerRef.current) return;
+
+  //   const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
+  //   const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+
+  //   if (isNearBottom) {
+  //     endOfMessagesRef.current?.scrollIntoView({ behavior: "smooth" });
+  //   }
+  // };
+
+  // useEffect(() => {
+  //   scrollToBottom();
+  // }, [transcript]);
 
   return (
-    <div className="fullWrapper">
-      <div className="leftSide">
-        <div>
-          <button
-            onClick={handleShareButton}
-            className="shareButton"
-            type="submit"
-          >
-            <span>{stream ? "Change" : "Share"} Tab</span>
-          </button>
-        </div>
-        <div className="videoBox">
-          <video
-            ref={videoRef}
-            autoPlay
-            className="w-full h-full rounded-xl"
-            onPlay={() => {
-              if (arecorder.state === "paused") {
-                arecorder.resume();
-              } else {
-                arecorder.start();
-              }
-            }}
-            onPause={() => {
-              arecorder.pause();
-            }}
-            onEnded={() => {
-              arecorder.stop();
-            }}
-          />
-        </div>
-        <div className="ErrorTexts">
-          <div className="text-lg font-medium">Error Checking</div>
-          <div>
-            {incorrectTexts.map((text, index) => (
-              <div key={index}>
-                <div>Erroneous Statement: {text.txt}</div>
-                <p>{text.txt2}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="rightSide">
-        <div className="TranscriptBox">
-          <div className="text-lg font-medium">Transcript</div>
-          <div>
-            <p>{transcript}</p>
-            <div ref={endOfMessagesRef} />
-          </div>
-        </div>
-      </div>
+    <div className="min-h-screen bg-background p-6 font-sans flex gap-6">
+  {/* Left Panel */}
+  <div className="w-1/2 space-y-6">
+    {/* Share Button */}
+    <div>
+      <button
+        onClick={handleShareButton}
+        className="px-4 py-2 bg-primary text-primary-foreground rounded-md shadow hover:bg-primary/90 transition"
+        type="submit"
+      >
+        <span>{stream ? "Change" : "Share"} Tab</span>
+      </button>
     </div>
+
+    {/* Video Card */}
+    <div className="rounded-xl overflow-hidden border border-dashed border-border shadow-lg bg-card">
+      <video
+      ref={videoRef}
+      autoPlay
+      muted
+      className="w-full h-80 object-cover"
+      onPlay={() => {
+        if (arecorder.state === "paused") {
+        arecorder.resume();
+        } else {
+        arecorder.start();
+        }
+      }}
+      onPause={() => arecorder.pause()}
+      onEnded={() => arecorder.stop()}
+      />
+    </div>
+
+    {/* Error Checking */}
+    <div className="rounded-xl bg-destructive/10 border border-destructive p-4 space-y-3 text-destructive-foreground">
+      <h2 className="text-lg font-semibold">Incorrect Claims Detected</h2>
+      {incorrectTexts.length === 0 ? (
+        <p className="text-muted-foreground">No false claims detected yet.</p>
+      ) : (
+        incorrectTexts.map((text, index) => (
+          <div
+            key={index}
+            className="border-l-4 border-destructive pl-3 py-1"
+          >
+            <p className="font-medium">{text.txt}</p>
+            <p className="text-sm text-muted-foreground">{text.txt2}</p>
+          </div>
+        ))
+      )}
+    </div>
+  </div>
+
+  {/* Right Panel - Transcript */}
+  <div className="w-1/2 rounded-xl border border-border bg-card p-6 shadow-lg overflow-y-auto max-h-[calc(100vh-3rem)]" ref={containerRef}>
+    <h2 className="text-lg font-semibold mb-4 text-foreground">Transcript</h2>
+    <div className="space-y-2 text-foreground">
+      <ReactMarkdown>{transcript}</ReactMarkdown>
+      <div ref={endOfMessagesRef} />
+    </div>
+  </div>
+</div>
+
   );
 }
 
