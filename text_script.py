@@ -350,7 +350,7 @@ def process_and_verify_claims(file_path):
     claims_verification = []
     manual_verification_required = {}
 
-    for i in range(3):
+    for i in range(len(all_claims)):
         print(f"\nVerifying claim: {all_claims[i]}")
         agent = VerificationAgent(api_key=API_KEY, cse_id=CSE_ID, gse_api_key=GSE_API_KEY)
         result_data = agent.process_query(all_claims[i])

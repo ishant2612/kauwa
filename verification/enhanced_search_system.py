@@ -285,6 +285,7 @@ class VerificationAgent:
                 future_to_item = {
                     executor.submit(self.extract_clean_content, item['link']): item
                     for item in search_results
+                    if not item['link'].lower().endswith('.pdf')  # Skip PDF links
                 }
 
                 for future in concurrent.futures.as_completed(future_to_item):

@@ -131,12 +131,12 @@ export default function FactCheckOutput({
                       </h4>
                       <div
                         className={`flex items-center ${
-                          output.textVerification
+                          output.textVerification === "TRUE"
                             ? "text-green-500"
                             : "text-red-500"
                         }`}
                       >
-                        {output.textVerification ? (
+                        {output.textVerification === "TRUE" ? (
                           <CheckCircle className="w-4 h-4 mr-1" />
                         ) : (
                           <XCircle className="w-4 h-4 mr-1" />
