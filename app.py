@@ -10,6 +10,7 @@ from aiAudioDetector.ai_audio_detector import AudioDetector
 from werkzeug.utils import secure_filename
 from verification.enhanced_search_system import VerificationAgent
 import numpy as np
+from text_script import process_and_verify_claims 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": [
     "https://kauwa-314j.vercel.app/dashboard", 
@@ -53,7 +54,23 @@ def process_input():
       - Text verification (expects JSON with a "query" key)
       - Deepfake detection (expects a file upload with key "video" or "image")
     """
-    
+    print("Request.files:", request.files)
+    print("Request.form:", request.form)
+    if "files" in request.files:
+        uploaded_file = request.files["files"]
+        if not uploaded_file:
+            return jsonify({"error": "No file uploaded"}), 400
+
+        file_path = os.path.join(Upload_folder, secure_filename(uploaded_file.filename))
+        uploaded_file.save(file_path)
+
+         # Assuming your logic is in textclaim.py
+        results = process_and_verify_claims(file_path)
+        
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        print(results)
+        return jsonify(results)
     
     if "video" in request.files:
         video = request.files["video"]

@@ -28,17 +28,17 @@ export default function ScreenShareTranscript() {
   const verifyBufferedSentences = useDebouncedCallback((buffer: string[]) => {
     const paragraphSize = 4; // You can tweak this
     const chunks: string[][] = [];
-  
+
     // Create chunks of sentences for context-rich verification
     for (let i = 0; i < buffer.length; i += paragraphSize) {
       chunks.push(buffer.slice(i, i + paragraphSize));
     }
-  
+
     chunks.forEach((chunk) => {
       const paragraph = chunk.join(" ").trim();
-  
+
       if (paragraph.length < 20 || !/[a-zA-Z]{3,}/.test(paragraph)) return;
-  
+
       verifyClaim(paragraph).then((isVerified) => {
         if (!isVerified) {
           // Flag each sentence in the failed paragraph
@@ -100,7 +100,7 @@ export default function ScreenShareTranscript() {
       });
 
       const responseText = response.choices[0].message?.content?.trim() || "";
-      console.log("Response text--->", responseText, claim );
+      console.log("Response text--->", responseText, claim);
       return responseText === "true"; // Only return true/false
     } catch (error) {
       console.error("Error verifying claim:", error);
@@ -150,7 +150,7 @@ export default function ScreenShareTranscript() {
       tracks.forEach((track: MediaStreamTrack) => track.stop());
       videoRef.current.srcObject = null;
     }
-  
+
     // Reset buffers only (keep transcript + incorrect texts)
     setBuffer("");
     setSentenceBuffer([]);
@@ -172,23 +172,22 @@ export default function ScreenShareTranscript() {
       response_format: "json",
       temperature: 0,
     });
-  
+
     const newTranscriptText = response.text;
     const combined = stringBuffer + newTranscriptText;
-  
+
     // 1. Extract full sentences and keep leftover
     const { sentences, remainder } = extractSentences(combined);
     setBuffer(remainder);
     setTranscript((prevText) => prevText + newTranscriptText);
-  
+
     // 2. Add new sentences to the buffer
     setSentenceBuffer((prevBuffer) => {
       const updatedBuffer = [...prevBuffer, ...sentences];
       verifyBufferedSentences(updatedBuffer); // debounced processing
       return []; // clear buffer
     });
-    
-  
+
     return response;
   }
 
@@ -197,57 +196,60 @@ export default function ScreenShareTranscript() {
   //   let sentences: string[] = [];
   //   let lastIndex = 0;
   //   let match;
-  
+
   //   while ((match = sentenceEndRegex.exec(text)) !== null) {
   //     const endIndex = match.index + match[0].length;
   //     const sentence = text.slice(lastIndex, endIndex).trim();
   //     if (sentence) sentences.push(sentence);
   //     lastIndex = endIndex;
   //   }
-  
+
   //   const remainder = text.slice(lastIndex).trim(); // leftover text
   //   return { sentences, remainder };
   // }
 
   // BETTER VERSION BELOW
-  function extractSentences(text: string): { sentences: string[], remainder: string } {
+  function extractSentences(text: string): {
+    sentences: string[];
+    remainder: string;
+  } {
     if (typeof Intl === "undefined" || typeof Intl.Segmenter === "undefined") {
       // fallback to basic regex if Intl.Segmenter isn't available
       const sentenceEndRegex = /([.!?])\s+/g;
       let sentences: string[] = [];
       let lastIndex = 0;
       let match;
-  
+
       while ((match = sentenceEndRegex.exec(text)) !== null) {
         const endIndex = match.index + match[0].length;
         const sentence = text.slice(lastIndex, endIndex).trim();
         if (sentence) sentences.push(sentence);
         lastIndex = endIndex;
       }
-  
+
       const remainder = text.slice(lastIndex).trim(); // leftover text
       return { sentences, remainder };
     }
-  
+
     // Better sentence segmentation using Intl.Segmenter
     const segmenter = new Intl.Segmenter("en", { granularity: "sentence" });
     const segments = Array.from(segmenter.segment(text));
-  
+
     const sentences: string[] = [];
     let remainder = "";
-  
+
     for (let i = 0; i < segments.length; i++) {
       const { segment, isWordLike } = segments[i];
-  
+
       if (segment.trim().length === 0) continue;
-  
+
       if (/[.?!]["']?$/.test(segment.trim())) {
         sentences.push(segment.trim());
       } else {
         remainder += segment;
       }
     }
-  
+
     return {
       sentences,
       remainder: remainder.trim(),
@@ -275,67 +277,73 @@ export default function ScreenShareTranscript() {
 
   return (
     <div className="min-h-screen bg-background p-6 font-sans flex gap-6">
-  {/* Left Panel */}
-  <div className="w-1/2 space-y-6">
-    {/* Share Button */}
-    <div>
-      <button
-        onClick={handleShareButton}
-        className="px-4 py-2 bg-primary text-primary-foreground rounded-md shadow hover:bg-primary/90 transition"
-        type="submit"
-      >
-        <span>{stream ? "Change" : "Share"} Tab</span>
-      </button>
-    </div>
-
-    {/* Video Card */}
-    <div className="rounded-xl overflow-hidden border border-dashed border-border shadow-lg bg-card">
-      <video
-      ref={videoRef}
-      autoPlay
-      muted
-      className="w-full h-80 object-cover"
-      onPlay={() => {
-        if (arecorder.state === "paused") {
-        arecorder.resume();
-        } else {
-        arecorder.start();
-        }
-      }}
-      onPause={() => arecorder.pause()}
-      onEnded={() => arecorder.stop()}
-      />
-    </div>
-
-    {/* Error Checking */}
-    <div className="rounded-xl bg-destructive/10 border border-destructive p-4 space-y-3 text-destructive-foreground">
-      <h2 className="text-lg font-semibold">Incorrect Claims Detected</h2>
-      {incorrectTexts.length === 0 ? (
-        <p className="text-muted-foreground">No false claims detected yet.</p>
-      ) : (
-        incorrectTexts.map((text, index) => (
-          <div
-            key={index}
-            className="border-l-4 border-destructive pl-3 py-1"
+      {/* Left Panel */}
+      <div className="w-1/2 space-y-6">
+        {/* Share Button */}
+        <div>
+          <button
+            onClick={handleShareButton}
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-md shadow hover:bg-primary/90 transition"
+            type="submit"
           >
-            <p className="font-medium">{text.txt}</p>
-            <p className="text-sm text-muted-foreground">{text.txt2}</p>
-          </div>
-        ))
-      )}
-    </div>
-  </div>
+            <span>{stream ? "Change" : "Share"} Tab</span>
+          </button>
+        </div>
 
-  {/* Right Panel - Transcript */}
-  <div className="w-1/2 rounded-xl border border-border bg-card p-6 shadow-lg overflow-y-auto max-h-[calc(100vh-3rem)]" ref={containerRef}>
-    <h2 className="text-lg font-semibold mb-4 text-foreground">Transcript</h2>
-    <div className="space-y-2 text-foreground">
-      <ReactMarkdown>{transcript}</ReactMarkdown>
-      <div ref={endOfMessagesRef} />
-    </div>
-  </div>
-</div>
+        {/* Video Card */}
+        <div className="rounded-xl overflow-hidden border border-dashed border-border shadow-lg bg-card">
+          <video
+            ref={videoRef}
+            autoPlay
+            muted
+            className="w-full h-80 object-contain"
+            onPlay={() => {
+              if (arecorder.state === "paused") {
+                arecorder.resume();
+              } else {
+                arecorder.start();
+              }
+            }}
+            onPause={() => arecorder.pause()}
+            onEnded={() => arecorder.stop()}
+          />
+        </div>
 
+        {/* Error Checking */}
+        <div className="rounded-xl bg-destructive/10 border border-destructive p-4 space-y-3 text-destructive-foreground">
+          <h2 className="text-lg font-semibold">Incorrect Claims Detected</h2>
+          {incorrectTexts.length === 0 ? (
+            <p className="text-muted-foreground">
+              No false claims detected yet.
+            </p>
+          ) : (
+            incorrectTexts.map((text, index) => (
+              <div
+                key={index}
+                className="border-l-4 border-destructive pl-3 py-1"
+              >
+                <p className="font-medium">{text.txt}</p>
+                <p className="text-sm text-muted-foreground">{text.txt2}</p>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* Right Panel - Transcript */}
+      <div
+        className="w-1/2 rounded-xl border border-border bg-card p-6 shadow-lg overflow-y-auto max-h-[calc(100vh-3rem)]"
+        ref={containerRef}
+      >
+        <h2 className="text-lg font-semibold mb-4 text-foreground">
+          Transcript
+        </h2>
+        <div className="space-y-2 text-foreground">
+          <ReactMarkdown>{transcript}</ReactMarkdown>
+          <div ref={endOfMessagesRef} />
+        </div>
+      </div>
+    </div>
   );
 }
 

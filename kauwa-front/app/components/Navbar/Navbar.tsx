@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { FileText } from "lucide-react";
 import Image from "next/image";
 
 export default function Navbar() {
@@ -28,6 +29,12 @@ export default function Navbar() {
           <Button variant="ghost" asChild>
             <Link href="/about" className="text-l">
               About
+            </Link>
+          </Button>
+          <Button variant="ghost" asChild>
+            <Link href="/script-verification">
+              <FileText className="mr-2 h-4 w-4" />
+              Script Verification
             </Link>
           </Button>
           <Button variant="ghost" asChild>
